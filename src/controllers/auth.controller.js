@@ -7,6 +7,7 @@ let emailVerifications = [];
 let resetTokens = [];
 let refreshTokens = [];
 const bcrypt = require('bcrypt');
+const { addresses } = require('../data/address.data');
 
 
 //========================= REGISTER =======================
@@ -44,7 +45,8 @@ const register = async(req, res) => {
         wishlist: [],
         cart : [],
         orders: [],
-        payments: []
+        payments: [],
+        addresses: []
     }; 
 
     users.push(newUser);

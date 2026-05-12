@@ -1,3 +1,4 @@
+const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 const validateSizes = (sizes) => {
     if (!sizes || !Array.isArray(sizes) || sizes.length === 0) {
         return 'sizes wajib diisi dan berupa array (contoh: [{"size":"S","stock":10}])';

@@ -1,6 +1,5 @@
 const {products} = require('@/data/product.data');
 const {v4: uuidv4} = require('uuid');
-const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 const { validateSizes } = require('@/helpers/product.helpers');
 
 
