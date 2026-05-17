@@ -1,5 +1,5 @@
-const {products} = require('@/data/product.data');
-const {v4: uuidv4} = require('uuid');
+const { products } = require('@/data/product.data');
+const { v4: uuidv4 } = require('uuid');
 const { validateSizes } = require('@/helpers/product.helpers');
 
 
@@ -8,15 +8,15 @@ const { validateSizes } = require('@/helpers/product.helpers');
 
 //========================= CREATE PRODUCT =========================
 const createProduct = (req, res) => {
-    const { name, description, price, sizes, category, 
+    const { name, description, price, sizes, category,
         originCityLabel, //Kota asal produk (misal "Mataram, Nusa Tenggara Barat")  
         originCityId,
         weight
     } = req.body;
-    const sellerID =  req.user.id;
+    const sellerID = req.user.id;
     const isAdmin = req.user.role === 'admin';
 
-    
+
     if (!name || !description || !price || !sizes || !category || !originCityLabel || !originCityId || !weight) {
         return res.status(400).json({
             message: 'Semua field wajib diisi'
@@ -40,9 +40,10 @@ const createProduct = (req, res) => {
         description,
         price,
         category,
-        sizes: sizes.map(s=> ({ 
-            size: s.size.toUpperCase(), 
-            stock: Number(s.stock) })),
+        sizes: sizes.map(s => ({
+            size: s.size.toUpperCase(),
+            stock: Number(s.stock)
+        })),
         weight: Number(weight),
         originCityLabel,
         originCityId
@@ -67,7 +68,7 @@ const getAllProducts = (req, res) => {
     if (category) {
         result = result.filter(p => p.category.toLowerCase().includes(category.toLowerCase()));
     }
-    if(sizes) {
+    if (sizes) {
         result = result.filter(p => p.sizes.some(s => s.size === sizes.toUpperCase()));
     }
 
@@ -84,7 +85,7 @@ const getProductById = (req, res) => {
     const { id } = req.params;
     const product = products.find(p => p.id === id);
 
-    if(!product) {
+    if (!product) {
         return res.status(404).json({
             message: 'Product tidak ditemukan'
         });
@@ -98,7 +99,7 @@ const getProductById = (req, res) => {
 
 // ========================= UPDATE PRODUCT =========================
 const updateProduct = (req, res) => {
-    const { 
+    const {
         id, name, description, price, sizes, category,
         originCityId,
         originCityLabel,
@@ -131,7 +132,7 @@ const updateProduct = (req, res) => {
         message: 'Product berhasil diperbarui',
         data: products[productIndex]
     });
-};  
+};
 
 // ========================= DELETE PRODUCT =========================
 const deleteProduct = (req, res) => {

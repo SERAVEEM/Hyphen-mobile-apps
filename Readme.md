@@ -10,7 +10,7 @@ MHSBe2/
 │   ├── helpers/
 │   ├── middleware/
 │   ├── models/
-│   └──routes/
+│   └── routes/
 │
 ├── node_modules/
 ├── .env
@@ -27,6 +27,9 @@ isi package :
 - node.js : runtime env
 - express : Framework
 - brycpt : Hash pw
+- midtrans
+- RajaOngkir
+- socket.io
 - jsonwebtoken : verify JWT Token
 - uuid : Generate ID
 - dotenv : baca file env
@@ -38,8 +41,10 @@ isi package :
 - nodemon : Auto restart server saat development
 
 # run:
-npm run dev -> mode development (supaya bisa lgsung refresh/restart)
-npm run start -> mode production
+ $ npm run dev -> mode development (supaya bisa lgsung refresh/restart)
+ $ npm run start -> mode production
+# tambahkan juga terminal kedua untuk run ngrok -> untuk payment gateway
+$ ngrok http 3000
 
 # putusin run :
 CTRL + C
@@ -58,5 +63,9 @@ PORT = 3000
 SECRET_KEY = rahasia123
 REFRESH_SECRET_KEY = rahasia123_refresh
 ADMIN_PASSWORD = admin123
+RAJAONGKIR_BASE_URL = https://rajaongkir.komerce.id/api/v1
+RAJAONGKIR_API_KEY = LfWnG1BO6b6a53af3390df56XJQEfyfE
 
 
+untuk frontend :
+npm install socket.io-client (Buat fitur chat)

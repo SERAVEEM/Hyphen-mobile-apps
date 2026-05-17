@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
+</head>
+<body>
+  <h3>🛡️ Admin</h3>
+  <div id="log" style="border:1px solid #ccc; height:200px; overflow:auto; padding:10px"></div>
+  <input id="msg" placeholder="Balas pesan..." />
+  <button onclick="kirim()">Balas</button>
+
+  <script>
+    const socket = io('http://localhost:3000');
+    const roomId = '9125d95d-8eb2-409e-9779-0afab4b4b193';
+    const senderId = 'admin001';
+
+    socket.on('connect', () => {
+      log('✅ Seller connected: ' + socket.id);
+      socket.emit('join_room', roomId);
+    });
+
+    socket.on('new_message', (data) => {
+      log('📨 ' + data.senderId + ': ' + data.message);
+    });
+
+    socket.on('user_typing', (data) => {
+      log('✏️ ' + data.username + ' sedang mengetik...');
+    });
+
+    socket.on('error', (data) => {
+      log('❌ Error: ' + data.message);
+    });
+
+    socket.on('connect_error', (err) => {
+      log('❌ Connect error: ' + err.message);
+    });
+
+    function kirim() {
+      const msg = document.getElementById('msg').value;
+      if (!msg) return; // jangan kirim kalau kosong
+
+      socket.emit('send_message', {
+        roomId,
+        senderId,
+        message: msg,
+        imageUrl: null
+      });
+
+      document.getElementById('msg').value = '';
+    }
+
+    function log(msg) {
+      document.getElementById('log').innerHTML += `<p>${msg}</p>`;
+    }
+  </script>
+</body>
+</html>
