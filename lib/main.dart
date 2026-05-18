@@ -59,7 +59,7 @@ const List<SlideData> _slides = [
     color: Color.fromARGB(255, 44, 62, 80), // dark navy
     category: 'STREET',
     headline: 'Make Your\nStyle',
-    imagePath: 'assets/images/slide2.jpg',
+    imagePath: 'assets/images/slide4.jpg',
   ),
   SlideData(
     color: Color.fromARGB(255, 26, 26, 26), // near-black
@@ -160,8 +160,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: [0.45, 1.0],
-                colors: [Colors.transparent, Colors.black87],
+                stops: [0.6, 1.0],
+                colors: [Colors.transparent, Colors.black38],
               ),
             ),
           ),
@@ -171,49 +171,51 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
 
-                // Brand name
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Text(
-                    'HYPEN.',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      color: Colors.white,
+                  padding: EdgeInsets.only(top: 18),
+                  child: Center(
+                    child: Text(
+                      'HYPEN.',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.96,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
 
                 const Spacer(),
 
-                // Animated headline text
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 33),
                   child: FadeTransition(
                     opacity: _textFade,
                     child: SlideTransition(
                       position: _textSlide,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
                             slide.category,
+                            textAlign: TextAlign.center,
                             style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 2.5,
-                              color: Colors.white70,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0,
+                              color: Colors.white,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             slide.headline,
+                            textAlign: TextAlign.left,
                             style: const TextStyle(
-                              fontSize: 70,
+                              fontSize: 64,
                               fontWeight: FontWeight.w900,
                               height: 1.0,
-                              letterSpacing: -1.0,
+                              letterSpacing: 0,
                               color: Colors.white,
                             ),
                           ),
@@ -222,33 +224,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
                   ),
                 ),
+                const SizedBox(height: 84),
 
-                const SizedBox(height: 28),
-
-                // Dot indicators
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_slides.length, (i) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: i == _currentIndex ? 22 : 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        color: i == _currentIndex
-                            ? Colors.white
-                            : Colors.white38,
-                      ),
-                    );
-                  }),
-                ),
-
-                const SizedBox(height: 28),
-
-                // Skip / Discover row
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  padding: const EdgeInsets.fromLTRB(33, 0, 33, 22),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -259,40 +238,30 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           'Skip',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.white60,
-                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
 
-                     ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const CategoriesScreen(),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            shape: const StadiumBorder(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CategoriesScreen(),
                             ),
+                          );
+                        },
+                        child: const Text(
+                          'Discover',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
                           ),
-                          label: const Text(
-                            'Discover',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          icon: const Icon(Icons.arrow_outward, size: 17),
-                          iconAlignment: IconAlignment.end,
                         ),
+                      ),
 
                     ],
                   ),
