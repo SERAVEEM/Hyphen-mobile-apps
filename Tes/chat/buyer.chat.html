@@ -12,22 +12,24 @@
 
   <script>
     const socket = io('http://localhost:3000');
-    const roomId = '9125d95d-8eb2-409e-9779-0afab4b4b193';
-    const senderId = 'user5864';
-    const token = 'ISI_TOKEN_BUYER_DISINI'; // ← ganti dengan token login
+    const roomId = '0e5e2390-150a-4c02-9271-3c616c5445b2';
+    const senderId = 'user4452';
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzZXI0NDUyIiwidXNlcm5hbWUiOiJ1c2VyY2NvdW50MTIzIiwiZW1haWwiOiJ1c2VyMTI0QGdtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzc5MDMzMjg5LCJleHAiOjE3NzkwMzQxODl9.Lwc0Axz05aCILZDKIszXyd9rjMDLzBkk28iTo0pnL_g'; // ← ganti dengan token login
 
     socket.on('connect', () => {
       log('✅ Buyer connected: ' + socket.id);
       socket.emit('join_room', roomId);
+
+      log('🖼️ Test image: <img src="https://via.placeholder.com/100" style="max-width:100px">');
     });
 
     socket.on('new_message', (data) => {
-      if (data.imageUrl) {
-        log('📨 ' + data.senderId + ': <img src="' + data.imageUrl + '" style="max-width:200px;max-height:200px">');
-      } else {
+    if (data.imageUrl) {
+        log('📨 ' + data.senderId + ': <img src="' + data.imageUrl + '" style="max-width:200px;max-height:200px;display:block">');
+    } else {
         log('📨 ' + data.senderId + ': ' + data.message);
-      }
-    });
+    }
+});
 
     socket.on('user_typing', (data) => {
       log('✏️ ' + data.username + ' sedang mengetik...');
@@ -70,7 +72,7 @@
           message: null,
           imageUrl: data.imageUrl
         });
-
+        log('📤 Socket emit send_message dengan imageUrl');
         document.getElementById('imgFile').value = '';
       }
 
@@ -86,8 +88,13 @@
     }
 
     function log(msg) {
-      document.getElementById('log').innerHTML += `<p>${msg}</p>`;
-    }
+    const div = document.getElementById('log');
+    const p = document.createElement('p');
+    p.style.margin = '4px 0';
+    p.innerHTML = msg;
+    div.appendChild(p);
+    div.scrollTop = div.scrollHeight;
+}
   </script>
 </body>
 </html>

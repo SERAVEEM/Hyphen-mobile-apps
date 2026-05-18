@@ -1,4 +1,4 @@
-const {users, initAdmin} = require('@/data/users.data');
+const { users, initAdmin } = require('@/data/users.data');
 const { orders } = require('@/data/order.data');
 const { idGenerator, validateUser, generateOTP } = require('@/helpers/auth.helpers');
 
@@ -11,7 +11,7 @@ const { addresses } = require('../data/address.data');
 
 
 //========================= REGISTER =======================
-const register = async(req, res) => {
+const register = async (req, res) => {
     const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
@@ -20,7 +20,7 @@ const register = async(req, res) => {
         });
     }
     const userTerdaftar = users.find(user => user.email === email);
-    
+
     if (userTerdaftar) {
         return res.status(400).json({
             message: 'Email sudah terdaftar'
@@ -39,23 +39,23 @@ const register = async(req, res) => {
         id: idGenerator(),
         username,
         email,
-        password : hashedPassword,
-        role : 'user',
+        password: hashedPassword,
+        role: 'user',
         isVerified: false,
         wishlist: [],
-        cart : [],
+        cart: [],
         orders: [],
         payments: [],
         addresses: [],
-    }; 
+    };
 
     users.push(newUser);
 
     const otp = generateOTP();
     const otpExpiry = Date.now() + 10 * 60 * 1000;
-    
+
     emailVerifications.push({ email, otp, otpExpiry });
-    console.log(`OTP register ${email}: ${otp}`);   
+    console.log(`OTP register ${email}: ${otp}`);
 
     res.status(201).json({
         message: 'Register berhasil',
@@ -65,69 +65,69 @@ const register = async(req, res) => {
 
 //========================= VERIFY EMAIL =======================
 const verifyEmail = (req, res) => {
-  const { email, otp } = req.body;
+    const { email, otp } = req.body;
 
-  const data = emailVerifications.find(
-    v => v.email === email && v.otp === otp
-  );
+    const data = emailVerifications.find(
+        v => v.email === email && v.otp === otp
+    );
 
-  if (!data) {
-    return res.status(400).json({
-      message: 'OTP salah'
+    if (!data) {
+        return res.status(400).json({
+            message: 'OTP salah'
+        });
+    }
+
+    if (Date.now() > data.otpExpiry) {
+        return res.status(400).json({
+            message: 'OTP expired'
+        });
+    }
+
+    const user = users.find(u => u.email === email);
+    if (!user) {
+        return res.status(400).json({
+            message: 'User tidak ditemukan'
+        });
+    }
+
+    user.isVerified = true;
+    emailVerifications = emailVerifications.filter(v => v.email !== email);
+
+    res.json({
+        message: 'Email berhasil diverifikasi'
     });
-  }
-
-  if (Date.now() > data.otpExpiry) {
-    return res.status(400).json({
-      message: 'OTP expired'
-    });
-  }
-
-  const user = users.find(u => u.email === email);
-  if (!user) {
-    return res.status(400).json({
-      message: 'User tidak ditemukan'
-    });
-  }
-
-  user.isVerified = true;
-  emailVerifications = emailVerifications.filter(v => v.email !== email);
-
-  res.json({
-    message: 'Email berhasil diverifikasi'
-  });
 };
 
 // ========================= RESEND OTP =========================
 const resendOTP = (req, res) => {
-  const { email } = req.body;
-  const user = users.find((u) => u.email === email);
+    const { email } = req.body;
+    const user = users.find((u) => u.email === email);
 
-  if (!user) {
-    return res.status(400).json({ message: 'Email tidak ditemukan' });
-  }
+    if (!user) {
+        return res.status(400).json({ message: 'Email tidak ditemukan' });
+    }
 
-  if (user.isVerified) {
-    return res.status(400).json({ message: 'Email sudah diverifikasi' });
-  }
+    if (user.isVerified) {
+        return res.status(400).json({ message: 'Email sudah diverifikasi' });
+    }
 
-  emailVerifications = emailVerifications.filter((v) => v.email !== email);
+    emailVerifications = emailVerifications.filter((v) => v.email !== email);
 
-  const otp = generateOTP();
-  const otpExpiry = Date.now() + 10 * 60 * 1000;
-  emailVerifications.push({ email, otp, otpExpiry });
+    const otp = generateOTP();
+    const otpExpiry = Date.now() + 10 * 60 * 1000;
+    emailVerifications.push({ email, otp, otpExpiry });
 
-  console.log(`OTP baru untuk ${email}: ${otp}`);
+    console.log(`OTP baru untuk ${email}: ${otp}`);
 
-  res.status(200).json({
-    message: 'OTP berhasil dikirim',
-    data: { email, otp },
-  });
+    res.status(200).json({
+        message: 'OTP berhasil dikirim',
+        data: { email, otp },
+    });
 };
 
 
 //======================= LOGIN =======================
-const login = async(req, res) => {
+const login = async (req, res) => {
     const { email, password } = req.body;
     const jwt = require('jsonwebtoken');
     const SECRET_KEY = process.env.SECRET_KEY;
@@ -144,7 +144,7 @@ const login = async(req, res) => {
             message: 'Email belum diverifikasi'
         });
     }
-    
+
 
     const isMatch = await bcrypt.compare(password, user.password);
 
@@ -163,11 +163,11 @@ const login = async(req, res) => {
     const accessToken = jwt.sign(payload, SECRET_KEY, { expiresIn: '15m' });
 
     const refreshToken = jwt.sign(
-        {id: user.id},
+        { id: user.id },
         REFRESH_SECRET_KEY,
-        {expiresIn: '7d'},
+        { expiresIn: '7d' },
     );
-    
+
     refreshTokens = refreshTokens.filter(rt => rt.userId !== user.id);
     refreshTokens.push({
         userId: user.id,
@@ -206,13 +206,13 @@ const logout = (req, res) => {
 
 //==================== FORGOT PASSWORD ===================
 const forgotPassword = (req, res) => {
-        const { email } = req.body;
-        const user = users.find(user => user.email === email);  
-        if (!user) {
-            return res.status(400).json({
-                message: 'Email tidak ditemukan'
-            });
-        } 
+    const { email } = req.body;
+    const user = users.find(user => user.email === email);
+    if (!user) {
+        return res.status(400).json({
+            message: 'Email tidak ditemukan'
+        });
+    }
 
     const otp = generateOTP();
     const otpExpiry = Date.now() + 10 * 60 * 1000;
@@ -232,8 +232,8 @@ const forgotPassword = (req, res) => {
 
 
 //=========================RESET PASSWORD=======================
-const resetPassword = async(req, res) => {
-    const { email, otp, newPassword } = req.body;   
+const resetPassword = async (req, res) => {
+    const { email, otp, newPassword } = req.body;
     const tokenData = resetTokens.find(token => token.email === email && token.otp === otp);
 
     if (!tokenData) {
@@ -254,7 +254,7 @@ const resetPassword = async(req, res) => {
         });
     }
 
-     const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
 
     resetTokens = resetTokens.filter(token => token.email !== email);
@@ -299,7 +299,7 @@ const refreshAccessToken = (req, res) => {
     }
 
     const newAccessToken = jwt.sign(
-        { id: user.id, username: user.username, email: user.email , role: user.role === 'admin' ? 'admin' : 'user'},
+        { id: user.id, username: user.username, email: user.email, role: user.role === 'admin' ? 'admin' : 'user' },
         SECRET_KEY,
         { expiresIn: '15m' }
     );
@@ -308,8 +308,8 @@ const refreshAccessToken = (req, res) => {
         message: 'Access token berhasil diperbarui',
         accessToken: newAccessToken
     });
-};    
- 
+};
+
 
 
 module.exports = { register, verifyEmail, resendOTP, login, forgotPassword, resetPassword, refreshAccessToken, logout };

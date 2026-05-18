@@ -82,45 +82,6 @@ const getCart = (req, res) => {
     });
 };
 
-
-// ========================= UPDATE QUANTITY DI CART =========================
-const updateCart = (req, res) => {
-    const { productId, size, quantity } = req.body;
-    const user = users.find((u) => u.id === req.user.id);
-
-    if (!user) {
-        return res.status(404).json({ message: 'User tidak ditemukan' });
-    }
-    if (!productId || !size || !quantity) {
-        return res.status(400).json({ message: 'productId, size, dan quantity wajib diisi' });
-    }
-    if (quantity <= 0) {
-        return res.status(400).json({ message: 'Quantity harus lebih dari 0' });
-    }
-
-    const cartItem = user.cart.find(
-        (item) => item.productId === productId && item.size === size.toUpperCase()
-    );
-    if (!cartItem) {
-        return res.status(404).json({ message: 'Item tidak ditemukan di cart' });
-    }
-
-    const product = products.find((p) => p.id === productId);
-    const selectedSize = product.sizes.find((s) => s.size === size.toUpperCase());
-    if (quantity > selectedSize.stock) {
-        return res.status(400).json({ message: `Stok tidak cukup. Tersedia: ${selectedSize.stock}` });
-    }
-
-    cartItem.quantity = quantity;
-    cartItem.totalPrice = cartItem.price * quantity;
-
-    return res.status(200).json({
-        message: 'Cart berhasil diupdate',
-        data: user.cart
-    });
-};
-
-
 // ========================= HAPUS ITEM DARI CART =========================
 const removeFromCart = (req, res) => {
     const { productId, size } = req.body;
@@ -162,4 +123,4 @@ const clearCart = (req, res) => {
 };
 
 
-module.exports = { addToCart, getCart, updateCart, removeFromCart, clearCart }; 
+module.exports = { addToCart, getCart, removeFromCart, clearCart }; 

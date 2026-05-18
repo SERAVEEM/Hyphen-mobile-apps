@@ -5,13 +5,13 @@ const { validatePhone, validatePostalCode } = require('@/helpers/address.helpers
 
 // ============= ADD ALAMAT ==================
 const addAddress = (req, res) => {
-    const { 
-        label, recipientName, phone, address, postalCode, isDefault, destinationCityId, destinationCityLabel    
+    const {
+        label, recipientName, phone, address, postalCode, isDefault, destinationCityId, destinationCityLabel
     } = req.body;
-    
+
     const userId = req.user.id;
 
-    if (!label || !recipientName || !phone || !address|| !postalCode || 
+    if (!label || !recipientName || !phone || !address || !postalCode ||
         !destinationCityId) { // ← wajib diisi
         return res.status(400).json({ message: 'Semua field harus diisi' });
     }
@@ -41,7 +41,7 @@ const addAddress = (req, res) => {
         destinationCityId,
         destinationCityLabel, // nama kota (misal "Mataram, Nusa Tenggara Barat")
         isDefault: shouldSetDefault
-    };  
+    };
 
     user.addresses.push(newAddress);
     return res.status(201).json({
@@ -54,7 +54,7 @@ const addAddress = (req, res) => {
 const deleteAddress = (req, res) => {
     const { addressId } = req.params;
     const userId = req.user.id;
-    if(!addressId){
+    if (!addressId) {
         return res.status(400).json({ message: 'Id alamat harus disertakan' });
     }
     const user = users.find((u) => u.id === userId);
@@ -66,12 +66,12 @@ const deleteAddress = (req, res) => {
         return res.status(404).json({ message: 'Alamat tidak ditemukan' });
     }
     user.addresses.splice(addressIndex, 1);
-    if(user.addresses.length > 0 && !user.addresses.some(addr => addr.isDefault)){
+    if (user.addresses.length > 0 && !user.addresses.some(addr => addr.isDefault)) {
         user.addresses[0].isDefault = true; // Set alamat pertama sebagai default jika tidak ada yang default
     }
     res.status(200).json({
         message: 'Alamat berhasil dihapus',
-        data : user.addresses
+        data: user.addresses
     });
 };
 
@@ -91,7 +91,7 @@ const getAllAddresses = (req, res) => {
 const getAddressDetail = (req, res) => {
     const { addressId } = req.params;
     const userId = req.user.id;
-    if(!addressId){
+    if (!addressId) {
         return res.status(400).json({ message: 'Id alamat harus disertakan' });
     }
     const user = users.find((u) => u.id === userId);
@@ -112,7 +112,7 @@ const getAddressDetail = (req, res) => {
 const setDefaultAddress = (req, res) => {
     const { addressId } = req.params;
     const userId = req.user.id;
-    if(!addressId){
+    if (!addressId) {
         return res.status(400).json({ message: 'Id alamat harus disertakan' });
     }
     const user = users.find((u) => u.id === userId);
@@ -135,11 +135,11 @@ const setDefaultAddress = (req, res) => {
 // ============= UPDATE ALAMAT ==============
 const updateAddress = (req, res) => {
     const { addressId } = req.params;
-    const { 
-        label, recipientName, phone, address, 
-        postalCode, destinationCityId, destinationCityLabel 
+    const {
+        label, recipientName, phone, address,
+        postalCode, destinationCityId, destinationCityLabel
     } = req.body;
-    
+
     const userId = req.user.id;
     const user = users.find((u) => u.id === userId);
     if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });

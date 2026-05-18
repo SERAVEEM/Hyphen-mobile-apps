@@ -1,57 +1,69 @@
 const { products } = require('@/data/product.data');
 const { v4: uuidv4 } = require('uuid');
 const { validateSizes } = require('@/helpers/product.helpers');
+const cloudinary = require('@/config/cloudinary');
 
 
 
 
 
 //========================= CREATE PRODUCT =========================
-const createProduct = (req, res) => {
+const createProduct = async (req, res) => {  // ← tambah async
     const { name, description, price, sizes, category,
-        originCityLabel, //Kota asal produk (misal "Mataram, Nusa Tenggara Barat")  
+        originCityLabel,
         originCityId,
         weight
     } = req.body;
     const sellerID = req.user.id;
-    const isAdmin = req.user.role === 'admin';
-
 
     if (!name || !description || !price || !sizes || !category || !originCityLabel || !originCityId || !weight) {
-        return res.status(400).json({
-            message: 'Semua field wajib diisi'
-        });
+        return res.status(400).json({ message: 'Semua field wajib diisi' });
     }
-    if (typeof price !== 'number') {
-        return res.status(400).json({
-            message: 'Price harus berupa angka'
-        });
+
+    if (isNaN(price) || Number(price) <= 0) {
+        return res.status(400).json({ message: 'Price harus berupa angka positif' });
     }
-    const sizeValidationError = validateSizes(req.body.sizes);
+
+    const sizeValidationError = validateSizes(JSON.parse(sizes)); // ← parse karena form-data
     if (sizeValidationError) {
-        return res.status(400).json({
-            message: sizeValidationError
-        });
+        return res.status(400).json({ message: sizeValidationError });
     }
+
+    // Upload gambar ke Cloudinary jika ada
+    let imageUrl = null;
+    if (req.file) {
+        const result = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+                { folder: 'product_images', resource_type: 'image' },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            ).end(req.file.buffer);
+        });
+        imageUrl = result.secure_url;
+    }
+
     const newProduct = {
         id: uuidv4(),
         sellerID,
         name,
         description,
-        price,
+        price: Number(price), // ← parse karena form-data
         category,
-        sizes: sizes.map(s => ({
+        sizes: JSON.parse(sizes).map(s => ({ // ← parse karena form-data
             size: s.size.toUpperCase(),
             stock: Number(s.stock)
         })),
         weight: Number(weight),
+        originCityId,
         originCityLabel,
-        originCityId
+        imageUrl,       // ← URL gambar dari Cloudinary
     };
 
     products.push(newProduct);
 
-    res.status(201).json({
+    return res.status(201).json({
         message: 'Product berhasil dibuat',
         data: newProduct
     });
@@ -99,8 +111,9 @@ const getProductById = (req, res) => {
 
 // ========================= UPDATE PRODUCT =========================
 const updateProduct = (req, res) => {
+    const { id } = req.params;
     const {
-        id, name, description, price, sizes, category,
+        name, description, price, sizes, category,
         originCityId,
         originCityLabel,
         weight
@@ -136,7 +149,7 @@ const updateProduct = (req, res) => {
 
 // ========================= DELETE PRODUCT =========================
 const deleteProduct = (req, res) => {
-    const { id } = req.body;
+    const { id } = req.params;
     const productIndex = products.findIndex(p => p.id === id);
     if (productIndex === -1) {
         return res.status(404).json({

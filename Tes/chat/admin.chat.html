@@ -12,22 +12,23 @@
 
   <script>
     const socket = io('http://localhost:3000');
-    const roomId = '9125d95d-8eb2-409e-9779-0afab4b4b193';
+    const roomId = '0e5e2390-150a-4c02-9271-3c616c5445b2';
     const senderId = 'admin001';
-    const token = 'ISI_TOKEN_ADMIN_DISINI'; // ← ganti dengan token login
-
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFkbWluMDAxIiwidXNlcm5hbWUiOiJhZG1pbjEyMyIsImVtYWlsIjoiYWRtaW4xMjNAZ21haWwuY29tIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzc5MDMzMjkxLCJleHAiOjE3NzkwMzQxOTF9.XDVhtyTXMO_0KqBMLCduPSuZ_UGzN17jS8tr7NXH6mM';
     socket.on('connect', () => {
       log('✅ Admin connected: ' + socket.id);
       socket.emit('join_room', roomId);
+
+      log('🖼️ Test image: <img src="https://via.placeholder.com/100" style="max-width:100px">');
     });
 
     socket.on('new_message', (data) => {
-      if (data.imageUrl) {
-        log('📨 ' + data.senderId + ': <img src="' + data.imageUrl + '" style="max-width:200px;max-height:200px">');
-      } else {
+    if (data.imageUrl) {
+        log('📨 ' + data.senderId + ': <img src="' + data.imageUrl + '" style="max-width:200px;max-height:200px;display:block">');
+    } else {
         log('📨 ' + data.senderId + ': ' + data.message);
-      }
-    });
+    }
+});
 
     socket.on('user_typing', (data) => {
       log('✏️ ' + data.username + ' sedang mengetik...');
@@ -79,13 +80,19 @@
           message: msg,
           imageUrl: null
         });
+        log('📤 Socket emit send_message dengan imageUrl');
         document.getElementById('msg').value = '';
       }
     }
 
     function log(msg) {
-      document.getElementById('log').innerHTML += `<p>${msg}</p>`;
-    }
+    const div = document.getElementById('log');
+    const p = document.createElement('p');
+    p.style.margin = '4px 0';
+    p.innerHTML = msg;
+    div.appendChild(p);
+    div.scrollTop = div.scrollHeight;
+}
   </script>
 </body>
 </html>
