@@ -37,17 +37,17 @@ class CategoryItem {
 const List<CategoryItem> categories = [
   CategoryItem(
     label: 'WINTER\nOUTFITS',
-    imagePath: 'assets/Winter.jpg',
+    imagePath: 'assets/images/Winter.png',
     placeholderColor: Color(0xFF7A6652),
   ),
   CategoryItem(
     label: 'SPRING\nOUTFITS',
-    imagePath: 'assets/Spring.jpg',
+    imagePath: 'assets/images/Spring.png',
     placeholderColor: Color(0xFF4A7C7E),
   ),
   CategoryItem(
     label: 'PRE-FALL\nOUTFITS',
-    imagePath: 'assets/Prefall.jpg',
+    imagePath: 'assets/images/PreFall.png',
     placeholderColor: Color(0xFF3D3D3D),
   ),
 ];
@@ -64,7 +64,7 @@ class CategoriesScreen extends StatefulWidget {
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
   final PageController _pageController = PageController(
-    viewportFraction: 0.74,
+    viewportFraction: 0.8,
     initialPage: _kInitialPage,
   );
 
@@ -102,9 +102,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         child: Column(
           children: [
             _buildTopBar(),
-            const SizedBox(height: 5),
+            const SizedBox(height: 25), // Push title lower
             _buildTitle(),
-            const SizedBox(height: 15),
+            const SizedBox(height: 55),
             _buildCarousel(),
             const Spacer(),
             _buildBottomNav(),
@@ -175,7 +175,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Widget _buildCarousel() {
     return SizedBox(
-      height: 520, // Ketinggian ditambah agar tombol panah tidak terpotong (clipped)
+      height: 550, // Reverted height
       child: PageView.builder(
         controller: _pageController,
         itemCount: _kInfiniteBase,
@@ -213,32 +213,38 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         children: [
           // Teks WOMEN & MEN
           Positioned(
-            bottom: 30,
+            bottom: 50,
             left: 0,
             right: 0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _navItem(label: 'WOMEN', isActive: false),
-                  _navItem(label: 'MEN', isActive: false),
-                ],
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Center(
+                    child: _navItem(label: 'WOMEN', isActive: true),
+                  ),
+                ),
+                const SizedBox(width: 120), // Ruang di tengah untuk hump
+                Expanded(
+                  child: Center(
+                    child: _navItem(label: 'MEN', isActive: false),
+                  ),
+                ),
+              ],
             ),
           ),
           // Shape Lengkungan Custom (Hump)
           Positioned(
-            bottom: 0,
+            bottom: -15, // Ensure it fully covers the bottom gap
+            left: 0,
+            right: 0,
             child: SizedBox(
-              width: 140, // Lebar area gambar custom shape
-              height: 80,
+              height: 120, // Made the brown thing taller
               child: CustomPaint(
                 painter: _BottomTabPainter(color: primaryBrown),
                 child: const Align(
                   alignment: Alignment.topCenter,
                   child: Padding(
-                    padding: EdgeInsets.only(top: 18), // Posisi icon home
+                    padding: EdgeInsets.only(top: 28), // Pushed icon down a bit to match the taller tab
                     child: Icon(
                       Icons.home_outlined, // Placeholder house outline
                       color: Colors.white,
@@ -261,7 +267,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         label,
         style: TextStyle(
           color: isActive ? Colors.black : Colors.black87,
-          fontSize: 14,
+          fontSize: 16,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.0,
         ),
@@ -297,6 +303,7 @@ class _CategoryCard extends StatelessWidget {
                   Image.asset(
                     item.imagePath,
                     fit: BoxFit.cover,
+                    alignment: Alignment.topCenter, // Keep the head visible
                     errorBuilder: (context, error, stackTrace) => Center(
                       child: Icon(
                         Icons.image_outlined,
@@ -340,13 +347,13 @@ class _CategoryCard extends StatelessWidget {
                   Positioned(
                     left: 0,
                     right: 0,
-                    bottom: 45,
+                    bottom: 70,
                     child: Text(
                       item.label,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 34,
+                        fontSize: 32,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.5,
                         height: 1.05, // Jarak antar baris dipersempit
@@ -360,7 +367,7 @@ class _CategoryCard extends StatelessWidget {
 
           // ── Arrow Button ──────────────────────────────
           Positioned(
-            bottom: -35,
+            bottom: -55, // Pushed further down to keep it exactly overlapping halfway
             left: 0,
             right: 0,
             child: Center(
@@ -368,24 +375,17 @@ class _CategoryCard extends StatelessWidget {
                 onTap: () {},
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  width: isActive ? 78 : 64,
-                  height: isActive ? 78 : 64,
+                  width: isActive ? 110 : 90, // Circle scaled even bigger
+                  height: isActive ? 110 : 90,
                   decoration: BoxDecoration(
                     color: primaryBrown,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 6), // Border putih tebal
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
                   ),
                   child: const Icon(
                     Icons.arrow_outward_rounded,
                     color: Colors.white,
-                    size: 28,
+                    size: 40, // Arrow icon scaled bigger
                   ),
                 ),
               ),
@@ -414,28 +414,38 @@ class _BottomTabPainter extends CustomPainter {
     final h = size.height;
 
     // Pengaturan dimensi lengkungan
-    final humpWidth = 80.0;
+    final humpWidth = 115.0; // Made the brown thing wider
     final startX = (w - humpWidth) / 2;
     final endX = startX + humpWidth;
-    final bottomRadius = 26.0;
-    final topRadius = 20.0;
+    final bottomRadius = 45.0; // Smooth wide flare at the bottom
+    
+    // Top corners rounded moderately
+    final topRadius = 24.0; 
 
     path.moveTo(0, h);
     path.lineTo(startX - bottomRadius, h);
-    // Lengkungan cekung kiri (pertemuan dengan bar bawah)
+    
+    // Left concave flare
     path.quadraticBezierTo(startX, h, startX, h - bottomRadius);
-    // Garis lurus ke atas
+    
+    // Straight vertical line up
     path.lineTo(startX, topRadius);
-    // Lengkungan cembung atas kiri
+    
+    // Top-left rounded corner
     path.quadraticBezierTo(startX, 0, startX + topRadius, 0);
-    // Garis lurus atap
+    
+    // Flat top
     path.lineTo(endX - topRadius, 0);
-    // Lengkungan cembung atas kanan
+    
+    // Top-right rounded corner
     path.quadraticBezierTo(endX, 0, endX, topRadius);
-    // Garis lurus ke bawah
+    
+    // Straight vertical line down
     path.lineTo(endX, h - bottomRadius);
-    // Lengkungan cekung kanan
+    
+    // Right concave flare
     path.quadraticBezierTo(endX, h, endX + bottomRadius, h);
+    
     path.lineTo(w, h);
     path.close();
 
