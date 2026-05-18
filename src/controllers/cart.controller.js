@@ -2,6 +2,7 @@ const { users } = require('@/data/users.data');
 const { products } = require('@/data/product.data');
 
 // ========================= TAMBAH KE CART =========================
+// POST /cart/addcart
 const addToCart = (req, res) => {
     const { productId, size, quantity } = req.body;
     const user = users.find((u) => u.id === req.user.id);
@@ -66,6 +67,7 @@ const addToCart = (req, res) => {
 
 
 // ========================= LIHAT CART =========================
+// GET /cart/getcart
 const getCart = (req, res) => {
     const user = users.find((u) => u.id === req.user.id);
     if (!user) {
@@ -83,6 +85,7 @@ const getCart = (req, res) => {
 };
 
 // ========================= HAPUS ITEM DARI CART =========================
+// DELETE /cart/removefromcart/:productId/:size
 const removeFromCart = (req, res) => {
     const { productId, size } = req.body;
     const user = users.find((u) => u.id === req.user.id);
@@ -111,6 +114,7 @@ const removeFromCart = (req, res) => {
 
 
 // ========================= KOSONGKAN CART =========================
+// DELETE /cart/clearcart
 const clearCart = (req, res) => {
     const user = users.find((u) => u.id === req.user.id);
     if (!user) {

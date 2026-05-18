@@ -62,10 +62,7 @@ const getCities = async (req, res) => {
 };
 
 // ================== HITUNG ONGKIR ==================
-// POST /shipping/cost
-// Body: { originCityId, destinationCityId, weightGram, courier? }
-// originCityId & destinationCityId → dari endpoint /shipping/cities?search=<nama kota>
-// courier → opsional, kalau tidak diisi hitung semua kurir
+//POST /shipping/cost
 const calculateShipping = async (req, res) => {
     try {
         const { originCityId, destinationCityId, weightGram, courier } = req.body;
@@ -81,8 +78,6 @@ const calculateShipping = async (req, res) => {
                 message: 'weightGram harus berupa angka positif (dalam gram)',
             });
         }
-
-        // Kalau courier tidak diisi → hitung semua kurir sekaligus
         const courierParam = courier
             ? courier.toLowerCase()
             : SUPPORTED_COURIERS.join(':');
@@ -125,7 +120,7 @@ const getMyShipments = (req, res) => {
 };
 
 // ================== SEMUA PENGIRIMAN (ADMIN) ==================
-// GET /shipping/all-shipments
+// GET /shipping/shipments
 const getAllShipments = (req, res) => {
     return res.status(200).json({
         message: 'Semua data pengiriman berhasil diambil',
@@ -136,9 +131,6 @@ const getAllShipments = (req, res) => {
 
 // ================== UPDATE STATUS PENGIRIMAN (ADMIN) ==================
 // PATCH /shipping/:id/status
-// Body: { status, message? }
-// Alur status: PENDING → PICKED_UP → IN_TRANSIT → DELIVERED
-//              * → CANCELLED (bisa dari status manapun)
 const updateShipmentStatus = (req, res) => {
     const { id } = req.params;
     const { status, message } = req.body;
@@ -165,13 +157,11 @@ const updateShipmentStatus = (req, res) => {
         timestamp: new Date().toISOString(),
     });
 
-    // Kalau DELIVERED → update status order jadi delivered
     if (statusUpper === 'DELIVERED') {
         const order = orders.find(o => o.id === shipment.orderId);
         if (order) order.status = 'delivered';
     }
 
-    // Kalau CANCELLED → update status order jadi cancelled
     if (statusUpper === 'CANCELLED') {
         const order = orders.find(o => o.id === shipment.orderId);
         if (order) order.status = 'cancelled';

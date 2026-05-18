@@ -2,7 +2,7 @@ const { users } = require('@/data/users.data');
 const { products } = require('@/data/product.data');
 
 // ========================= TAMBAH WISHLIST =========================
-
+// POST /wishlist/add
 const addWishlist = (req, res) => {
     const { productId } = req.body;
     const user = users.find((u) => u.id === req.user.id);
@@ -26,7 +26,7 @@ const addWishlist = (req, res) => {
 
 
 // ========================= LIHAT WISHLIST =========================
-
+// GET /wishlist/getwishlist
 const getWishlist = (req, res) => {
     const user = users.find((u) => u.id === req.user.id);
     if (!user) {
@@ -44,6 +44,7 @@ const getWishlist = (req, res) => {
     });
 };
 // ===================== HAPUS WISHLIST =========================
+// DELETE /wishlist/remove/:productId
 const removeWishlist = (req, res) => {
     const { productId } = req.params;
     const user = users.find((u) => u.id === req.user.id);

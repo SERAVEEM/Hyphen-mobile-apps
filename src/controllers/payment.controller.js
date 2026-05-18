@@ -11,6 +11,7 @@ const snap = new midtransClient.Snap({
 });
 
 // ========================= CREATE PAYMENT =========================
+// POST /payment/create-payment
 const createPayment = async (req, res) => {
     const { orderId, paymentMethod } = req.body;
     const userId = req.user.id;
@@ -142,6 +143,7 @@ const handleWebhook = async (req, res) => {
 };
 
 // ========================= RIWAYAT PEMBAYARAN (USER) =========================
+// GET /payment/my-payments
 const getPayments = (req, res) => {
     const user = users.find((u) => u.id === req.user.id);
     if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
@@ -154,6 +156,7 @@ const getPayments = (req, res) => {
 };
 
 // ========================= SEMUA PEMBAYARAN (ADMIN) =========================
+// GET /payment/payments
 const getAllPayments = (req, res) => {
     return res.status(200).json({
         message: 'Semua data pembayaran',
@@ -163,6 +166,7 @@ const getAllPayments = (req, res) => {
 };
 
 // ========================= DETAIL PEMBAYARAN =========================
+// GET /payment/payments/:id
 const getPaymentById = (req, res) => {
     const { id } = req.params;
 
@@ -181,9 +185,11 @@ const getPaymentById = (req, res) => {
     return res.status(200).json({ message: 'Pembayaran ditemukan', data: payment });
 };
 
+
 // ========================= CANCEL PAYMENT =========================
+// POST /payment/cancel-payment/:id
 const cancelPayment = (req, res) => {
-    const { paymentId } = req.body;
+    const { paymentId } = req.params;
     const userId = req.user.id;
 
     if (!paymentId) return res.status(400).json({ message: 'paymentId wajib diisi' });

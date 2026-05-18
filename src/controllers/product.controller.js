@@ -8,6 +8,7 @@ const cloudinary = require('@/config/cloudinary');
 
 
 //========================= CREATE PRODUCT =========================
+// POST /product/create
 const createProduct = async (req, res) => {  // ← tambah async
     const { name, description, price, sizes, category,
         originCityLabel,
@@ -71,6 +72,7 @@ const createProduct = async (req, res) => {  // ← tambah async
 
 
 // ========================= GET ALL PRODUCTS (SEACRH) =========================
+// GET /product/products?name=&category=&sizes=
 const getAllProducts = (req, res) => {
     const { name, category, sizes } = req.query;
     let result = products;
@@ -93,6 +95,7 @@ const getAllProducts = (req, res) => {
 
 
 // ========================= CHECK DETAIL PRODUCT BY ID =========================
+// GET /product/:id
 const getProductById = (req, res) => {
     const { id } = req.params;
     const product = products.find(p => p.id === id);
@@ -110,6 +113,7 @@ const getProductById = (req, res) => {
 
 
 // ========================= UPDATE PRODUCT =========================
+// PUT /product/update/:id
 const updateProduct = (req, res) => {
     const { id } = req.params;
     const {
@@ -137,8 +141,8 @@ const updateProduct = (req, res) => {
         ...(sizes && { sizes }),
         ...(category && { category }),
         ...(weight && { weight: Number(weight) }),
-        ...(originCityId && { originCityId }),       // ← tambah
-        ...(originCityLabel && { originCityLabel }), // ← tambah
+        ...(originCityId && { originCityId }),
+        ...(originCityLabel && { originCityLabel }),
     };
 
     return res.status(200).json({
@@ -148,6 +152,7 @@ const updateProduct = (req, res) => {
 };
 
 // ========================= DELETE PRODUCT =========================
+// DELETE /product/delete/:id
 const deleteProduct = (req, res) => {
     const { id } = req.params;
     const productIndex = products.findIndex(p => p.id === id);

@@ -11,6 +11,7 @@ const { addresses } = require('../data/address.data');
 
 
 //========================= REGISTER =======================
+//POST /auth/register
 const register = async (req, res) => {
     const { username, email, password } = req.body;
 
@@ -64,6 +65,7 @@ const register = async (req, res) => {
 };
 
 //========================= VERIFY EMAIL =======================
+// POST /auth/verify-email
 const verifyEmail = (req, res) => {
     const { email, otp } = req.body;
 
@@ -99,6 +101,7 @@ const verifyEmail = (req, res) => {
 };
 
 // ========================= RESEND OTP =========================
+// POST /auth/resend-otp
 const resendOTP = (req, res) => {
     const { email } = req.body;
     const user = users.find((u) => u.email === email);
@@ -127,6 +130,7 @@ const resendOTP = (req, res) => {
 
 
 //======================= LOGIN =======================
+// POST /auth/login
 const login = async (req, res) => {
     const { email, password } = req.body;
     const jwt = require('jsonwebtoken');
@@ -191,6 +195,7 @@ const login = async (req, res) => {
 
 
 //========================= LOGOUT =======================
+// POST /auth/logout
 const logout = (req, res) => {
     const { refreshToken } = req.body;
 
@@ -205,6 +210,7 @@ const logout = (req, res) => {
 };
 
 //==================== FORGOT PASSWORD ===================
+// POST /auth/forgot-password
 const forgotPassword = (req, res) => {
     const { email } = req.body;
     const user = users.find(user => user.email === email);
@@ -232,6 +238,7 @@ const forgotPassword = (req, res) => {
 
 
 //=========================RESET PASSWORD=======================
+// POST /auth/reset-password
 const resetPassword = async (req, res) => {
     const { email, otp, newPassword } = req.body;
     const tokenData = resetTokens.find(token => token.email === email && token.otp === otp);
@@ -265,6 +272,7 @@ const resetPassword = async (req, res) => {
 };
 
 //========================= REFRESH TOKEN =======================
+// POST /auth/refresh-token
 const refreshAccessToken = (req, res) => {
     const { refreshToken } = req.body;
     const jwt = require('jsonwebtoken');

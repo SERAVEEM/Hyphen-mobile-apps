@@ -6,7 +6,6 @@ const cloudinary = require('@/config/cloudinary');
 
 // ================== BUAT / AMBIL ROOM CHAT ==================
 // POST /chat/room
-// Body: { sellerId, productId }
 const getOrCreateRoom = async (req, res) => {
     try {
         const buyerId = req.user.id;

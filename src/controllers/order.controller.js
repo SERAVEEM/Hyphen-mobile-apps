@@ -7,6 +7,7 @@ const { shippingData } = require('@/data/shipping.data');
 
 
 // ================== ORDER PRODUCT =====================
+// POST /order/create-order
 const createOrder = (req, res) => {
     const userId = req.user.id;
     const { productId, quantity, size } = req.body;
@@ -62,9 +63,10 @@ const createOrder = (req, res) => {
 };
 
 // ================== BUAT ORDER DARI CART ==================
+// POST /order/create/from-cart
 const createOrderFromCart = (req, res) => {
     const userId = req.user.id;
-    const user   = users.find(u => u.id === userId);
+    const user = users.find(u => u.id === userId);
     if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
 
     // Cek cart kosong
@@ -73,7 +75,7 @@ const createOrderFromCart = (req, res) => {
     }
 
     const newOrders = [];
-    const errors    = [];
+    const errors = [];
 
     // Buat order untuk setiap item di cart
     for (const item of user.cart) {
@@ -101,14 +103,14 @@ const createOrderFromCart = (req, res) => {
         selectedSize.stock -= item.quantity;
 
         const newOrder = {
-            id:         uuidv4(),
+            id: uuidv4(),
             userId,
-            productId:  item.productId,
-            quantity:   item.quantity,
-            size:       item.size.toUpperCase(),
+            productId: item.productId,
+            quantity: item.quantity,
+            size: item.size.toUpperCase(),
             totalPrice: product.price * item.quantity,
-            status:     'pending',
-            orderDate:  new Date().toISOString(),
+            status: 'pending',
+            orderDate: new Date().toISOString(),
         };
 
         orders.push(newOrder);
@@ -121,13 +123,14 @@ const createOrderFromCart = (req, res) => {
 
     return res.status(201).json({
         message: `${newOrders.length} order berhasil dibuat`,
-        errors:  errors.length > 0 ? errors : undefined,
-        total:   newOrders.length,
-        data:    newOrders,
+        errors: errors.length > 0 ? errors : undefined,
+        total: newOrders.length,
+        data: newOrders,
     });
 };
 
 // ========================= GET ALL ORDERS (RIWAYAT ORDER) =========================
+// GET /order/orders
 const getAllOrders = (req, res) => {
 
     res.status(200).json({
@@ -139,6 +142,7 @@ const getAllOrders = (req, res) => {
 
 
 // ========================= GET DETAIL ORDER BY ID =========================
+// GET /order/orders/:id
 const getOrderById = (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
@@ -157,6 +161,7 @@ const getOrderById = (req, res) => {
 
 
 // ========================= RIWAYAT ORDERAN USER =========================
+// GET /order/my-orders
 const getMyOrders = (req, res) => {
     const userId = req.user.id;
     const user = users.find((u) => u.id === req.user.id);
@@ -177,8 +182,9 @@ const getMyOrders = (req, res) => {
 };
 
 // ========================= CANCEL ORDER ==============================
+// POST /order/cancel-order/:id
 const cancelOrder = (req, res) => {
-    const { orderId } = req.body;
+    const { orderId } = req.params;
     const userId = req.user.id;
 
     if (!orderId) {

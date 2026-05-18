@@ -4,6 +4,7 @@ const { validatePhone, validatePostalCode } = require('@/helpers/address.helpers
 
 
 // ============= ADD ALAMAT ==================
+// POST /address/add
 const addAddress = (req, res) => {
     const {
         label, recipientName, phone, address, postalCode, isDefault, destinationCityId, destinationCityLabel
@@ -51,6 +52,7 @@ const addAddress = (req, res) => {
 };
 
 // ================== DELETE ALAMAT ==================
+// DELETE /address/delete/:addressId
 const deleteAddress = (req, res) => {
     const { addressId } = req.params;
     const userId = req.user.id;
@@ -76,6 +78,7 @@ const deleteAddress = (req, res) => {
 };
 
 // ================== LIHAT DAFTAR ALAMAT ==================
+// GET /address/addresses
 const getAllAddresses = (req, res) => {
     const user = users.find((u) => u.id === req.user.id);
     if (!user) {
@@ -88,6 +91,7 @@ const getAllAddresses = (req, res) => {
 };
 
 // ================== LIHAT DETAIL ALAMAT ==================
+// GET /address/detail/:addressId
 const getAddressDetail = (req, res) => {
     const { addressId } = req.params;
     const userId = req.user.id;
@@ -109,6 +113,7 @@ const getAddressDetail = (req, res) => {
 };
 
 // ================== SET DEFAULT ALAMAT ==================
+// PUT /address/setDefault/:addressId
 const setDefaultAddress = (req, res) => {
     const { addressId } = req.params;
     const userId = req.user.id;
@@ -133,6 +138,7 @@ const setDefaultAddress = (req, res) => {
 
 
 // ============= UPDATE ALAMAT ==============
+// PUT /address/update/:addressId
 const updateAddress = (req, res) => {
     const { addressId } = req.params;
     const {

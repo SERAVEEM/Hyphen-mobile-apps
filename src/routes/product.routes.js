@@ -11,8 +11,8 @@ router.put('/update/:id', authMiddleware, updateProduct);
 router.delete('/delete/:id', authMiddleware, deleteProduct);
 
 //ini buat public/user
-router.get('/get-all', getAllProducts);
-router.get('/get/:id', getProductById);
+router.get('/products', getAllProducts);
+router.get('/:id', getProductById);
 
 
 

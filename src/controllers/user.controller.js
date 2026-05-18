@@ -3,7 +3,7 @@ const {users} = require('@/data/users.data');
 const {products} = require('@/data/product.data');
 
 // ========================= GET PROFILE =========================
-
+// GET /user/profile
 const getProfile = (req, res) => {
   const user = users.find((u) => u.id === req.user.id);
 
@@ -20,7 +20,7 @@ const getProfile = (req, res) => {
 };
 
 // ========================= UPDATE PROFILE =========================
-
+// GET /user/update
 const updateUser = async (req, res) => {
   const { username, email } = req.body;
 
@@ -46,7 +46,7 @@ const updateUser = async (req, res) => {
 };
 
 // ========================= CHANGE PASSWORD =========================
-
+// PUT /user/change-password
 const changePassword = async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   const user = users.find((u) => u.id === req.user.id);
@@ -71,7 +71,7 @@ const changePassword = async (req, res) => {
 
 
 // ========================= DELETE USER =========================
-
+// DELETE /user/delete
 const deleteUser = (req, res) => {
   const userIndex = users.findIndex((u) => u.id === req.user.id);
 

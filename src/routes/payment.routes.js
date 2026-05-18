@@ -6,8 +6,8 @@ const { roleMiddleware } = require('@/middleware/role.middleware');
 
 router.post('/create-payment', authMiddleware, createPayment);
 router.get('/my-payments', authMiddleware, getPayments);
-router.get('/pay/:id', authMiddleware, getPaymentById);
-router.post('/cancel-payment', authMiddleware, cancelPayment);
+router.get('/payments/:id', authMiddleware, getPaymentById);
+router.post('/cancel-payment/:id', authMiddleware, cancelPayment);
 router.post('/webhook', handleWebhook);
 
 router.get('/config', (req, res) => {
