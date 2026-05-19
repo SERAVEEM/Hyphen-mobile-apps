@@ -1,0 +1,340 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+class UserProfile extends StatelessWidget {
+  final VoidCallback? onJualPressed;
+  const UserProfile({super.key, this.onJualPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. User Info Card
+          _buildUserCard(),
+          const SizedBox(height: 20),
+
+          // 2. Mulai Jual Bajumu Banner
+          _buildJualBanner(context),
+          const SizedBox(height: 20),
+
+          // 3. Order History List Item
+          _buildMenuItem(
+            icon: Icons.receipt_long_outlined,
+            title: 'Order History',
+            onTap: () {
+              // TODO: Integrate order history action
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // 4. Share List Item
+          _buildMenuItem(
+            icon: Icons.share_outlined,
+            title: 'Share',
+            onTap: () {
+              // TODO: Integrate share action
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // 5. Help & Support grouped card
+          _buildGroupedMenu(
+            items: [
+              _GroupedItemData(
+                icon: Icons.help_outline,
+                title: 'Help',
+                onTap: () {},
+              ),
+              _GroupedItemData(
+                icon: Icons.headset_mic_outlined,
+                title: 'Support',
+                onTap: () {},
+              ),
+            ],
+          ),
+          
+          // Extra bottom padding to avoid bottom navigation bar overlap
+          const SizedBox(height: 120),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: Row(
+        children: [
+          // Avatar Placeholder
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: const Color(0xFFF3F3F3),
+            child: Icon(Icons.person, size: 28, color: Colors.grey[400]),
+          ),
+          const SizedBox(width: 16),
+          // User Info (Name & Subtitle)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'User Name Placeholder',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Lihat profil',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black38,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Chevron Right Icon
+          const Icon(
+            Icons.chevron_right,
+            color: Colors.black26,
+            size: 24,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJualBanner(BuildContext context) {
+    return Container(
+      height: 180,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.black,
+      ),
+      child: Stack(
+        children: [
+          // Background Image
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Image.asset(
+                'assets/images/banner_sweater.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ),
+          // Gradient Overlay to ensure text readability
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.black.withOpacity(0.85),
+                    Colors.black.withOpacity(0.2),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Text Content
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Mulai jual bajumu',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Baju tidak terpakai\ndapat jadi cuan',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white70,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // "Jual" Button
+                ElevatedButton(
+                  onPressed: onJualPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Jual',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.black, size: 22),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: Colors.black26,
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupedMenu({required List<_GroupedItemData> items}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: List.generate(items.length, (index) {
+          final item = items[index];
+          return Column(
+            children: [
+              InkWell(
+                onTap: item.onTap,
+                borderRadius: index == 0
+                    ? const BorderRadius.vertical(top: Radius.circular(20))
+                    : index == items.length - 1
+                        ? const BorderRadius.vertical(bottom: Radius.circular(20))
+                        : BorderRadius.zero,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: Row(
+                    children: [
+                      Icon(item.icon, color: Colors.black, size: 22),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Colors.black26,
+                        size: 24,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (index < items.length - 1)
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFF5F5F5),
+                  indent: 20,
+                  endIndent: 20,
+                ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _GroupedItemData {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  _GroupedItemData({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+}
