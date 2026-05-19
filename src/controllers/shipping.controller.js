@@ -1,8 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
-const { users } = require('@/data/users.data');
-const { orders } = require('@/data/order.data');
-const { products } = require('@/data/product.data');
-const { shipments } = require('@/data/shipping.data');
+const pool = require('@/config/db');
 const { rajaongkirGet, rajaongkirPost } = require('@/helpers/shipping.helpers');
 
 // ================== KURIR YANG DIDUKUNG ==================
@@ -12,11 +8,8 @@ const SUPPORTED_COURIERS = [
     'rpx', 'sentral', 'star', 'wahana', 'dse'
 ];
 
-// ================== CARI PROVINSI / KOTA / KECAMATAN ==================
+// ================== CARI PROVINSI ==================
 // GET /shipping/provinces?search=<nama>
-// GET /shipping/cities?search=<nama>
-// Kedua endpoint pakai fungsi yang sama karena RajaOngkir Komerce
-// menggunakan satu endpoint untuk semua level wilayah
 const getProvinces = async (req, res) => {
     try {
         const { search } = req.query;
@@ -39,6 +32,8 @@ const getProvinces = async (req, res) => {
     }
 };
 
+// ================== CARI KOTA ==================
+// GET /shipping/cities?search=<nama>
 const getCities = async (req, res) => {
     try {
         const { search } = req.query;
@@ -62,7 +57,7 @@ const getCities = async (req, res) => {
 };
 
 // ================== HITUNG ONGKIR ==================
-//POST /shipping/cost
+// POST /shipping/cost
 const calculateShipping = async (req, res) => {
     try {
         const { originCityId, destinationCityId, weightGram, courier } = req.body;
@@ -78,9 +73,8 @@ const calculateShipping = async (req, res) => {
                 message: 'weightGram harus berupa angka positif (dalam gram)',
             });
         }
-        const courierParam = courier
-            ? courier.toLowerCase()
-            : SUPPORTED_COURIERS.join(':');
+
+        const courierParam = courier ? courier.toLowerCase() : SUPPORTED_COURIERS.join(':');
 
         const data = await rajaongkirPost('/calculate/domestic-cost', {
             origin: originCityId,
@@ -91,7 +85,7 @@ const calculateShipping = async (req, res) => {
         });
 
         const results = Array.isArray(data) ? data : [data];
-        results.sort((a, b) => a.cost - b.cost); // urutkan dari termurah
+        results.sort((a, b) => a.cost - b.cost);
 
         return res.status(200).json({
             message: 'Kalkulasi ongkir berhasil',
@@ -108,20 +102,26 @@ const calculateShipping = async (req, res) => {
 
 // ================== RIWAYAT PENGIRIMAN USER ==================
 // GET /shipping/my-shipments
-const getMyShipments = (req, res) => {
+const getMyShipments = async (req, res) => {
     const userId = req.user.id;
-    const userShipments = shipments.filter(s => s.userId === userId);
+
+    const [shipments] = await pool.query(
+        'SELECT * FROM shipments WHERE userId = ? ORDER BY createdAt DESC',
+        [userId]
+    );
 
     return res.status(200).json({
         message: 'Daftar pengiriman berhasil diambil',
-        total: userShipments.length,
-        data: userShipments,
+        total: shipments.length,
+        data: shipments,
     });
 };
 
 // ================== SEMUA PENGIRIMAN (ADMIN) ==================
-// GET /shipping/shipments
-const getAllShipments = (req, res) => {
+// GET /shipping/all-shipments
+const getAllShipments = async (req, res) => {
+    const [shipments] = await pool.query('SELECT * FROM shipments ORDER BY createdAt DESC');
+
     return res.status(200).json({
         message: 'Semua data pengiriman berhasil diambil',
         total: shipments.length,
@@ -131,45 +131,39 @@ const getAllShipments = (req, res) => {
 
 // ================== UPDATE STATUS PENGIRIMAN (ADMIN) ==================
 // PATCH /shipping/:id/status
-const updateShipmentStatus = (req, res) => {
+const updateShipmentStatus = async (req, res) => {
     const { id } = req.params;
     const { status, message } = req.body;
 
-    const validStatuses = ['PENDING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
-    if (!status || !validStatuses.includes(status.toUpperCase())) {
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    if (!status || !validStatuses.includes(status.toLowerCase())) {
         return res.status(400).json({
             message: 'Status tidak valid',
             validStatuses,
         });
     }
 
-    const shipment = shipments.find(s => s.id === id);
-    if (!shipment) {
+    const [shipment] = await pool.query('SELECT * FROM shipments WHERE id = ?', [id]);
+    if (shipment.length === 0) {
         return res.status(404).json({ message: 'Shipment tidak ditemukan' });
     }
 
-    const statusUpper = status.toUpperCase();
-    shipment.status = statusUpper;
-    shipment.updatedAt = new Date().toISOString();
-    shipment.statusHistory.push({
-        status: statusUpper,
-        message: message ?? `Status diperbarui ke ${statusUpper}`,
-        timestamp: new Date().toISOString(),
-    });
+    const statusLower = status.toLowerCase();
 
-    if (statusUpper === 'DELIVERED') {
-        const order = orders.find(o => o.id === shipment.orderId);
-        if (order) order.status = 'delivered';
+    await pool.query('UPDATE shipments SET status = ? WHERE id = ?', [statusLower, id]);
+
+    // Update status order jika delivered atau cancelled
+    if (statusLower === 'delivered') {
+        await pool.query("UPDATE orders SET status = 'delivered' WHERE id = ?", [shipment[0].orderId]);
+    } else if (statusLower === 'cancelled') {
+        await pool.query("UPDATE orders SET status = 'cancelled' WHERE id = ?", [shipment[0].orderId]);
     }
 
-    if (statusUpper === 'CANCELLED') {
-        const order = orders.find(o => o.id === shipment.orderId);
-        if (order) order.status = 'cancelled';
-    }
+    const [updated] = await pool.query('SELECT * FROM shipments WHERE id = ?', [id]);
 
     return res.status(200).json({
         message: 'Status pengiriman berhasil diperbarui',
-        data: shipment,
+        data: updated[0],
     });
 };
 

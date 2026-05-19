@@ -1,20 +1,12 @@
-const { products } = require('@/data/product.data');
 const { v4: uuidv4 } = require('uuid');
+const pool = require('@/config/db');
 const { validateSizes } = require('@/helpers/product.helpers');
 const cloudinary = require('@/config/cloudinary');
 
-
-
-
-
 //========================= CREATE PRODUCT =========================
 // POST /product/create
-const createProduct = async (req, res) => {  // ← tambah async
-    const { name, description, price, sizes, category,
-        originCityLabel,
-        originCityId,
-        weight
-    } = req.body;
+const createProduct = async (req, res) => {
+    const { name, description, price, sizes, category, originCityLabel, originCityId, weight } = req.body;
     const sellerID = req.user.id;
 
     if (!name || !description || !price || !sizes || !category || !originCityLabel || !originCityId || !weight) {
@@ -25,12 +17,12 @@ const createProduct = async (req, res) => {  // ← tambah async
         return res.status(400).json({ message: 'Price harus berupa angka positif' });
     }
 
-    const sizeValidationError = validateSizes(JSON.parse(sizes)); // ← parse karena form-data
+    const parsedSizes = JSON.parse(sizes);
+    const sizeValidationError = validateSizes(parsedSizes);
     if (sizeValidationError) {
         return res.status(400).json({ message: sizeValidationError });
     }
 
-    // Upload gambar ke Cloudinary jika ada
     let imageUrl = null;
     if (req.file) {
         const result = await new Promise((resolve, reject) => {
@@ -45,126 +37,158 @@ const createProduct = async (req, res) => {  // ← tambah async
         imageUrl = result.secure_url;
     }
 
-    const newProduct = {
-        id: uuidv4(),
-        sellerID,
-        name,
-        description,
-        price: Number(price), // ← parse karena form-data
-        category,
-        sizes: JSON.parse(sizes).map(s => ({ // ← parse karena form-data
-            size: s.size.toUpperCase(),
-            stock: Number(s.stock)
-        })),
-        weight: Number(weight),
-        originCityId,
-        originCityLabel,
-        imageUrl,       // ← URL gambar dari Cloudinary
-    };
+    const id = uuidv4();
 
-    products.push(newProduct);
+    await pool.query(
+        'INSERT INTO products (id, sellerID, name, description, price, category, weight, originCityId, originCityLabel, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [id, sellerID, name, description, Number(price), category, Number(weight), originCityId, originCityLabel, imageUrl]
+    );
+
+    const sizeValues = parsedSizes.map(s => [id, s.size.toUpperCase(), Number(s.stock)]);
+    await pool.query('INSERT INTO product_sizes (productId, size, stock) VALUES ?', [sizeValues]);
+
+    const [product] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    const [sizes_] = await pool.query('SELECT size, stock FROM product_sizes WHERE productId = ?', [id]);
 
     return res.status(201).json({
         message: 'Product berhasil dibuat',
-        data: newProduct
+        data: { ...product[0], sizes: sizes_ }
     });
 };
 
-
-// ========================= GET ALL PRODUCTS (SEACRH) =========================
+// ========================= GET ALL PRODUCTS =========================
 // GET /product/products?name=&category=&sizes=
-const getAllProducts = (req, res) => {
+const getAllProducts = async (req, res) => {
     const { name, category, sizes } = req.query;
-    let result = products;
+
+    let query = `
+        SELECT p.*, GROUP_CONCAT(ps.size) as availableSizes
+        FROM products p
+        LEFT JOIN product_sizes ps ON p.id = ps.productId
+        WHERE 1=1
+    `;
+    const params = [];
+
     if (name) {
-        result = result.filter(p => p.name.toLowerCase().includes(name.toLowerCase()));
+        query += ' AND p.name LIKE ?';
+        params.push(`%${name}%`);
     }
     if (category) {
-        result = result.filter(p => p.category.toLowerCase().includes(category.toLowerCase()));
+        query += ' AND p.category LIKE ?';
+        params.push(`%${category}%`);
     }
     if (sizes) {
-        result = result.filter(p => p.sizes.some(s => s.size === sizes.toUpperCase()));
+        query += ' AND ps.size = ?';
+        params.push(sizes.toUpperCase());
     }
+
+    query += ' GROUP BY p.id';
+
+    const [products] = await pool.query(query, params);
+
+    // Ambil sizes per produk
+    const productIds = products.map(p => p.id);
+    let sizesMap = {};
+    if (productIds.length > 0) {
+        const [allSizes] = await pool.query(
+            'SELECT productId, size, stock FROM product_sizes WHERE productId IN (?)',
+            [productIds]
+        );
+        allSizes.forEach(s => {
+            if (!sizesMap[s.productId]) sizesMap[s.productId] = [];
+            sizesMap[s.productId].push({ size: s.size, stock: s.stock });
+        });
+    }
+
+    const result = products.map(p => ({ ...p, sizes: sizesMap[p.id] || [] }));
 
     res.status(200).json({
         message: 'Berhasil ambil semua product',
         total: result.length,
         data: result
     });
-}
+};
 
-
-// ========================= CHECK DETAIL PRODUCT BY ID =========================
+// ========================= GET PRODUCT BY ID =========================
 // GET /product/:id
-const getProductById = (req, res) => {
+const getProductById = async (req, res) => {
     const { id } = req.params;
-    const product = products.find(p => p.id === id);
 
-    if (!product) {
-        return res.status(404).json({
-            message: 'Product tidak ditemukan'
-        });
-    }
-    res.status(200).json({
-        message: 'Berhasil ambil product',
-        data: product
-    });
-}
-
-
-// ========================= UPDATE PRODUCT =========================
-// PUT /product/update/:id
-const updateProduct = (req, res) => {
-    const { id } = req.params;
-    const {
-        name, description, price, sizes, category,
-        originCityId,
-        originCityLabel,
-        weight
-    } = req.body;
-
-    const productIndex = products.findIndex(p => p.id === id);
-    if (productIndex === -1) {
+    const [product] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    if (product.length === 0) {
         return res.status(404).json({ message: 'Product tidak ditemukan' });
     }
 
-    // Validasi seller hanya bisa update produknya sendiri
-    if (products[productIndex].sellerID !== req.user.id && req.user.role !== 'admin') {
+    const [sizes] = await pool.query('SELECT size, stock FROM product_sizes WHERE productId = ?', [id]);
+
+    res.status(200).json({
+        message: 'Berhasil ambil product',
+        data: { ...product[0], sizes }
+    });
+};
+
+// ========================= UPDATE PRODUCT =========================
+// PUT /product/update/:id
+const updateProduct = async (req, res) => {
+    const { id } = req.params;
+    const { name, description, price, sizes, category, originCityId, originCityLabel, weight } = req.body;
+
+    const [product] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    if (product.length === 0) {
+        return res.status(404).json({ message: 'Product tidak ditemukan' });
+    }
+
+    if (product[0].sellerID !== req.user.id && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Anda tidak memiliki akses untuk mengubah produk ini' });
     }
 
-    products[productIndex] = {
-        ...products[productIndex],
-        ...(name && { name }),
-        ...(description && { description }),
-        ...(price !== undefined && { price }),
-        ...(sizes && { sizes }),
-        ...(category && { category }),
-        ...(weight && { weight: Number(weight) }),
-        ...(originCityId && { originCityId }),
-        ...(originCityLabel && { originCityLabel }),
-    };
+    await pool.query(
+        `UPDATE products SET
+            name = COALESCE(?, name),
+            description = COALESCE(?, description),
+            price = COALESCE(?, price),
+            category = COALESCE(?, category),
+            weight = COALESCE(?, weight),
+            originCityId = COALESCE(?, originCityId),
+            originCityLabel = COALESCE(?, originCityLabel)
+        WHERE id = ?`,
+        [name || null, description || null, price ? Number(price) : null, category || null,
+         weight ? Number(weight) : null, originCityId || null, originCityLabel || null, id]
+    );
+
+    if (sizes) {
+        const parsedSizes = JSON.parse(sizes);
+        const sizeValidationError = validateSizes(parsedSizes);
+        if (sizeValidationError) {
+            return res.status(400).json({ message: sizeValidationError });
+        }
+        await pool.query('DELETE FROM product_sizes WHERE productId = ?', [id]);
+        const sizeValues = parsedSizes.map(s => [id, s.size.toUpperCase(), Number(s.stock)]);
+        await pool.query('INSERT INTO product_sizes (productId, size, stock) VALUES ?', [sizeValues]);
+    }
+
+    const [updated] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    const [updatedSizes] = await pool.query('SELECT size, stock FROM product_sizes WHERE productId = ?', [id]);
 
     return res.status(200).json({
         message: 'Product berhasil diperbarui',
-        data: products[productIndex]
+        data: { ...updated[0], sizes: updatedSizes }
     });
 };
 
 // ========================= DELETE PRODUCT =========================
 // DELETE /product/delete/:id
-const deleteProduct = (req, res) => {
+const deleteProduct = async (req, res) => {
     const { id } = req.params;
-    const productIndex = products.findIndex(p => p.id === id);
-    if (productIndex === -1) {
-        return res.status(404).json({
-            message: 'Product tidak ditemukan'
-        });
+
+    const [product] = await pool.query('SELECT id FROM products WHERE id = ?', [id]);
+    if (product.length === 0) {
+        return res.status(404).json({ message: 'Product tidak ditemukan' });
     }
-    products.splice(productIndex, 1);
-    res.status(200).json({
-        message: 'Product berhasil dihapus'
-    });
-}
+
+    await pool.query('DELETE FROM products WHERE id = ?', [id]);
+
+    res.status(200).json({ message: 'Product berhasil dihapus' });
+};
 
 module.exports = { createProduct, getAllProducts, getProductById, updateProduct, deleteProduct };

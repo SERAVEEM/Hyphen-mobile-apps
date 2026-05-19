@@ -1,9 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { users } = require('@/data/users.data');
-const { orders } = require('@/data/order.data');
-const { products } = require('@/data/product.data');
-const { shipments } = require('@/data/shipping.data');
-const { payments } = require('@/data/payment.data');
+const pool = require('@/config/db');
 const { rajaongkirPost } = require('@/helpers/shipping.helpers');
 const midtransClient = require('midtrans-client');
 
@@ -21,8 +17,6 @@ const snap = new midtransClient.Snap({
 
 // ================== CHECKOUT ==================
 // POST /checkout
-// Body: { orderId, addressId, courierCode, service, notes? }
-// Flow: validasi → verifikasi ongkir → buat shipment → buat payment Midtrans → return snapUrl
 const checkout = async (req, res) => {
     try {
         const { orderId, addressId, courierCode, service, notes } = req.body;
@@ -43,10 +37,14 @@ const checkout = async (req, res) => {
         }
 
         // ===== VALIDASI ORDER =====
-        const order = orders.find(o => o.id === orderId && o.userId === userId);
-        if (!order) {
+        const [orderRows] = await pool.query(
+            'SELECT * FROM orders WHERE id = ? AND userId = ?',
+            [orderId, userId]
+        );
+        if (orderRows.length === 0) {
             return res.status(404).json({ message: 'Order tidak ditemukan' });
         }
+        const order = orderRows[0];
         if (['cancelled', 'shipped', 'paid', 'waiting_payment'].includes(order.status)) {
             return res.status(400).json({
                 message: `Order tidak bisa dicheckout, status saat ini: ${order.status}`
@@ -54,10 +52,11 @@ const checkout = async (req, res) => {
         }
 
         // ===== VALIDASI PRODUK =====
-        const product = products.find(p => p.id === order.productId);
-        if (!product) {
+        const [productRows] = await pool.query('SELECT * FROM products WHERE id = ?', [order.productId]);
+        if (productRows.length === 0) {
             return res.status(404).json({ message: 'Produk tidak ditemukan' });
         }
+        const product = productRows[0];
         if (!product.originCityId) {
             return res.status(400).json({ message: 'Produk belum memiliki kota asal pengiriman' });
         }
@@ -66,34 +65,41 @@ const checkout = async (req, res) => {
         }
 
         // ===== VALIDASI ALAMAT =====
-        const user = users.find(u => u.id === userId);
-        const address = user?.addresses?.find(a => a.id === addressId);
-        if (!address) {
+        const [addressRows] = await pool.query(
+            'SELECT * FROM addresses WHERE id = ? AND userId = ?',
+            [addressId, userId]
+        );
+        if (addressRows.length === 0) {
             return res.status(404).json({ message: 'Alamat tidak ditemukan' });
         }
+        const address = addressRows[0];
         if (!address.destinationCityId) {
             return res.status(400).json({ message: 'Alamat belum memiliki destinationCityId' });
         }
 
         // ===== CEK DUPLIKAT SHIPMENT & PAYMENT =====
-        const alreadyShipped = shipments.find(s => s.orderId === orderId);
-        if (alreadyShipped) {
+        const [existingShipment] = await pool.query(
+            'SELECT id FROM shipments WHERE orderId = ?',
+            [orderId]
+        );
+        if (existingShipment.length > 0) {
             return res.status(400).json({ message: 'Order ini sudah memiliki pengiriman' });
         }
 
-        const alreadyPaid = payments.find(p => p.orderId === orderId && p.status !== 'cancelled');
-        if (alreadyPaid) {
+        const [existingPayment] = await pool.query(
+            "SELECT id FROM payments WHERE orderId = ? AND status != 'cancelled'",
+            [orderId]
+        );
+        if (existingPayment.length > 0) {
             return res.status(400).json({ message: 'Order ini sudah memiliki pembayaran aktif' });
         }
 
         // ===== HITUNG & VERIFIKASI ONGKIR =====
-        const originCityId = product.originCityId;
-        const destinationCityId = address.destinationCityId;
-        const weightGram = Math.max(product.weight * order.quantity, 1000); // minimum 1kg
+        const weightGram = Math.max(product.weight * order.quantity, 1000);
 
         const courierResults = await rajaongkirPost('/calculate/domestic-cost', {
-            origin: originCityId,
-            destination: destinationCityId,
+            origin: product.originCityId,
+            destination: address.destinationCityId,
             weight: weightGram,
             courier: courierCode.toLowerCase(),
             price: 'lowest',
@@ -112,42 +118,31 @@ const checkout = async (req, res) => {
 
         const shippingCost = selectedCost.cost;
         const etd = selectedCost.etd || '-';
-        const totalAmount = order.totalPrice + shippingCost; // harga produk + ongkir
+        const totalAmount = Number(order.totalPrice) + shippingCost;
 
         // ===== BUAT SHIPMENT =====
-        const newShipment = {
-            id: uuidv4(),
-            userId,
-            orderId,
-            addressId,
-            originCityId,
-            originCityLabel: product.originCityLabel ?? null,
-            destinationCityId,
-            destinationCityLabel: address.destinationCityLabel ?? null,
-            courierCode: courierCode.toLowerCase(),
-            courierName: selectedCost.name,
-            service: serviceUpper,
-            description: selectedCost.description,
-            weightGram,
-            shippingCost,
-            etd,
-            notes: notes ?? null,
-            status: 'PENDING',
-            statusHistory: [{
-                status: 'PENDING',
-                message: 'Pesanan menunggu konfirmasi pengiriman',
-                timestamp: new Date().toISOString(),
-            }],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
+        const shipmentId = uuidv4();
 
-        shipments.push(newShipment);
+        await pool.query(
+            `INSERT INTO shipments 
+            (id, userId, orderId, addressId, courierCode, service, courierName, estimatedDays, shippingCost, notes, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                shipmentId, userId, orderId, addressId,
+                courierCode.toLowerCase(), serviceUpper,
+                selectedCost.name, etd, shippingCost,
+                notes ?? null, 'pending'
+            ]
+        );
 
         // ===== BUAT PAYMENT MIDTRANS =====
+        const [userRows] = await pool.query('SELECT username, email FROM users WHERE id = ?', [userId]);
+        const user = userRows[0];
+
+        const midtransOrderId = `PAY-${Date.now()}`;
         const midtransParam = {
             transaction_details: {
-                order_id: `PAY-${Date.now()}`,
+                order_id: midtransOrderId,
                 gross_amount: totalAmount,
             },
             customer_details: {
@@ -157,7 +152,7 @@ const checkout = async (req, res) => {
             item_details: [
                 {
                     id: order.productId,
-                    price: Math.round(order.totalPrice / order.quantity),
+                    price: Math.round(Number(order.totalPrice) / order.quantity),
                     quantity: order.quantity,
                     name: product.name ?? 'Produk',
                 },
@@ -170,7 +165,7 @@ const checkout = async (req, res) => {
             ],
             expiry: {
                 unit: 'hours',
-                duration: 24, // batas bayar 24 jam
+                duration: 24,
             },
             enabled_payments: [
                 'credit_card', 'bca_va', 'bni_va', 'bri_va',
@@ -181,54 +176,48 @@ const checkout = async (req, res) => {
 
         const midtransResponse = await snap.createTransaction(midtransParam);
 
-        const newPayment = {
-            id: uuidv4(),
-            orderId,
-            userId,
-            shipmentId: newShipment.id,
-            productPrice: order.totalPrice,
-            shippingCost,
-            amount: totalAmount,
-            status: 'pending',
-            snapToken: midtransResponse.token,
-            snapUrl: midtransResponse.redirect_url,
-            createdAt: new Date().toISOString(),
-            expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        };
+        const paymentId = uuidv4();
+        const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-        // Update status order
-        order.status = 'waiting_payment';
+        await pool.query(
+            `INSERT INTO payments 
+            (id, orderId, userId, amount, paymentMethod, status, midtransOrderId, snapToken, snapUrl, expiredAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                paymentId, orderId, userId, totalAmount,
+                'midtrans', 'pending', midtransOrderId,
+                midtransResponse.token, midtransResponse.redirect_url, expiredAt
+            ]
+        );
 
-        // Simpan payment
-        payments.push(newPayment);
-        if (!user.payments) user.payments = [];
-        user.payments.push(newPayment);
+        // ===== UPDATE STATUS ORDER =====
+        await pool.query("UPDATE orders SET status = 'waiting_payment' WHERE id = ?", [orderId]);
 
         // ===== RESPONSE =====
         return res.status(201).json({
             message: 'Checkout berhasil! Silakan selesaikan pembayaran.',
-            snapUrl: midtransResponse.redirect_url,  // buka untuk bayar
-            snapToken: midtransResponse.token,          // untuk Snap.js popup
+            snapUrl: midtransResponse.redirect_url,
+            snapToken: midtransResponse.token,
             data: {
                 order: {
                     id: order.id,
-                    status: order.status,
+                    status: 'waiting_payment',
                     totalPrice: order.totalPrice,
                 },
                 shipment: {
-                    id: newShipment.id,
-                    courierName: newShipment.courierName,
-                    service: newShipment.service,
-                    etd: newShipment.etd,
-                    shippingCost: newShipment.shippingCost,
+                    id: shipmentId,
+                    courierName: selectedCost.name,
+                    service: serviceUpper,
+                    etd,
+                    shippingCost,
                 },
                 payment: {
-                    id: newPayment.id,
-                    productPrice: newPayment.productPrice,
-                    shippingCost: newPayment.shippingCost,
-                    totalAmount: newPayment.amount,
-                    expiredAt: newPayment.expiredAt,
-                    snapUrl: newPayment.snapUrl,
+                    id: paymentId,
+                    productPrice: order.totalPrice,
+                    shippingCost,
+                    totalAmount,
+                    expiredAt,
+                    snapUrl: midtransResponse.redirect_url,
                 }
             }
         });

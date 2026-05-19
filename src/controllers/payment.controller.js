@@ -1,8 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { users } = require('@/data/users.data');
-const { orders } = require('@/data/order.data');
-const { payments } = require('@/data/payment.data');
-const { products } = require('@/data/product.data');
+const pool = require('@/config/db');
 const midtransClient = require('midtrans-client');
 
 const snap = new midtransClient.Snap({
@@ -20,27 +17,32 @@ const createPayment = async (req, res) => {
         return res.status(400).json({ message: 'Semua field harus diisi' });
     }
 
-    const user = users.find((u) => u.id === userId);
-    if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
-
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return res.status(404).json({ message: 'Order tidak ditemukan' });
+    const [orderRows] = await pool.query('SELECT * FROM orders WHERE id = ? AND userId = ?', [orderId, userId]);
+    if (orderRows.length === 0) return res.status(404).json({ message: 'Order tidak ditemukan' });
+    const order = orderRows[0];
 
     if (['cancelled', 'waiting_confirmation', 'paid', 'pending_cod'].includes(order.status)) {
         return res.status(400).json({ message: 'Order sudah dibayar atau dibatalkan' });
     }
 
-    const alreadyPaid = payments.find(p => p.orderId === orderId && p.status !== 'cancelled');
-    if (alreadyPaid) {
+    const [existingPayment] = await pool.query(
+        "SELECT id FROM payments WHERE orderId = ? AND status != 'cancelled'",
+        [orderId]
+    );
+    if (existingPayment.length > 0) {
         return res.status(400).json({ message: 'Order sudah memiliki pembayaran aktif' });
     }
 
-    const product = products.find((p) => p.id === order.productId);
+    const [productRows] = await pool.query('SELECT * FROM products WHERE id = ?', [order.productId]);
+    const product = productRows[0];
 
-    // Buat transaksi Midtrans
+    const [userRows] = await pool.query('SELECT username, email FROM users WHERE id = ?', [userId]);
+    const user = userRows[0];
+
+    const midtransOrderId = `PAY-${orderId}-${Date.now()}`;
     const parameter = {
         transaction_details: {
-            order_id: `PAY-${orderId}-${Date.now()}`,
+            order_id: midtransOrderId,
             gross_amount: order.totalPrice,
         },
         customer_details: {
@@ -49,112 +51,98 @@ const createPayment = async (req, res) => {
         },
         item_details: [{
             id: order.productId,
-            price: order.totalPrice / order.quantity,
+            price: Math.round(Number(order.totalPrice) / order.quantity),
             quantity: order.quantity,
             name: product?.name ?? 'Produk',
         }],
         expiry: {
             unit: 'hours',
-            duration: 24, // ← batas bayar 24 jam
+            duration: 24,
         },
     };
 
     const midtransResponse = await snap.createTransaction(parameter);
 
-    const newPayment = {
-        id: uuidv4(),
-        orderId,
-        userId,
-        amount: order.totalPrice,
-        paymentMethod: paymentMethod.toLowerCase(),
-        status: 'pending',
-        midtransOrderId: parameter.transaction_details.order_id,
-        snapToken: midtransResponse.token,       // ← untuk frontend
-        snapUrl: midtransResponse.redirect_url, // ← link pembayaran
-        createdAt: new Date().toISOString(),
-        expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    };
+    const paymentId = uuidv4();
+    const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    order.status = 'waiting_payment';
-    payments.push(newPayment);
-    if (!user.payments) user.payments = [];
-    user.payments.push(newPayment);
+    await pool.query(
+        `INSERT INTO payments (id, orderId, userId, amount, paymentMethod, status, midtransOrderId, snapToken, snapUrl, expiredAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [paymentId, orderId, userId, order.totalPrice, paymentMethod.toLowerCase(),
+         'pending', midtransOrderId, midtransResponse.token, midtransResponse.redirect_url, expiredAt]
+    );
+
+    await pool.query("UPDATE orders SET status = 'waiting_payment' WHERE id = ?", [orderId]);
+
+    const [newPayment] = await pool.query('SELECT * FROM payments WHERE id = ?', [paymentId]);
 
     return res.status(201).json({
         message: 'Pembayaran berhasil dibuat',
-        snapUrl: midtransResponse.redirect_url, // ← buka ini untuk bayar
+        snapUrl: midtransResponse.redirect_url,
         snapToken: midtransResponse.token,
-        data: newPayment,
+        data: newPayment[0],
     });
 };
 
-// Helper filter metode pembayaran
-const getPaymentMethods = (method) => {
-    switch (method.toLowerCase()) {
-        case 'qris':
-            return ['qris'];
-
-        case 'transfer':
-            return ['bank_transfer'];
-
-        case 'gopay':
-            return ['gopay'];
-
-        case 'shopeepay':
-            return ['shopeepay'];
-
-        default:
-            return [
-                'qris',
-                'gopay',
-                'bank_transfer',
-                'shopeepay'
-            ];
-    }
-};
-
 // ========================= WEBHOOK MIDTRANS =========================
-// POST /payment/webhook — dipanggil otomatis oleh Midtrans saat status berubah
+// POST /payment/webhook
 const handleWebhook = async (req, res) => {
     const { order_id, transaction_status, fraud_status } = req.body;
-    const payment = payments.find(p => p.midtransOrderId === order_id);
-    const order = orders.find(o => o.id === payment?.orderId);
 
-    if (!payment || !order) {
+    const [paymentRows] = await pool.query('SELECT * FROM payments WHERE midtransOrderId = ?', [order_id]);
+    if (paymentRows.length === 0) {
         return res.status(404).json({ message: 'Payment tidak ditemukan' });
     }
+    const payment = paymentRows[0];
+
+    const [orderRows] = await pool.query('SELECT * FROM orders WHERE id = ?', [payment.orderId]);
+    if (orderRows.length === 0) {
+        return res.status(404).json({ message: 'Order tidak ditemukan' });
+    }
+
+    let paymentStatus, orderStatus;
 
     if (transaction_status === 'settlement' ||
         (transaction_status === 'capture' && fraud_status === 'accept')) {
-        payment.status = 'paid';
-        order.status = 'paid';
+        paymentStatus = 'paid';
+        orderStatus = 'paid';
     } else if (transaction_status === 'expire') {
-        payment.status = 'expired';
-        order.status = 'cancelled';
+        paymentStatus = 'expired';
+        orderStatus = 'cancelled';
     } else if (transaction_status === 'cancel' || transaction_status === 'deny') {
-        payment.status = 'cancelled';
-        order.status = 'cancelled';
+        paymentStatus = 'cancelled';
+        orderStatus = 'cancelled';
+    } else {
+        return res.status(200).json({ message: 'Status tidak memerlukan update' });
     }
+
+    await pool.query('UPDATE payments SET status = ? WHERE id = ?', [paymentStatus, payment.id]);
+    await pool.query('UPDATE orders SET status = ? WHERE id = ?', [orderStatus, payment.orderId]);
 
     return res.status(200).json({ message: 'Webhook berhasil diproses' });
 };
 
 // ========================= RIWAYAT PEMBAYARAN (USER) =========================
 // GET /payment/my-payments
-const getPayments = (req, res) => {
-    const user = users.find((u) => u.id === req.user.id);
-    if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
+const getPayments = async (req, res) => {
+    const [payments] = await pool.query(
+        'SELECT * FROM payments WHERE userId = ? ORDER BY createdAt DESC',
+        [req.user.id]
+    );
 
     return res.status(200).json({
         message: 'Riwayat pembayaran',
-        total: user.payments ? user.payments.length : 0,
-        data: user.payments ?? [],
+        total: payments.length,
+        data: payments,
     });
 };
 
 // ========================= SEMUA PEMBAYARAN (ADMIN) =========================
 // GET /payment/payments
-const getAllPayments = (req, res) => {
+const getAllPayments = async (req, res) => {
+    const [payments] = await pool.query('SELECT * FROM payments ORDER BY createdAt DESC');
+
     return res.status(200).json({
         message: 'Semua data pembayaran',
         total: payments.length,
@@ -164,60 +152,60 @@ const getAllPayments = (req, res) => {
 
 // ========================= DETAIL PEMBAYARAN =========================
 // GET /payment/payments/:id
-const getPaymentById = (req, res) => {
+const getPaymentById = async (req, res) => {
     const { id } = req.params;
 
     if (req.user.role === 'admin') {
-        const payment = payments.find((p) => p.id === id);
-        if (!payment) return res.status(404).json({ message: 'Pembayaran tidak ditemukan' });
-        return res.status(200).json({ message: 'Pembayaran ditemukan', data: payment });
+        const [payment] = await pool.query('SELECT * FROM payments WHERE id = ?', [id]);
+        if (payment.length === 0) return res.status(404).json({ message: 'Pembayaran tidak ditemukan' });
+        return res.status(200).json({ message: 'Pembayaran ditemukan', data: payment[0] });
     }
 
-    const user = users.find((u) => u.id === req.user.id);
-    if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
+    const [payment] = await pool.query(
+        'SELECT * FROM payments WHERE id = ? AND userId = ?',
+        [id, req.user.id]
+    );
+    if (payment.length === 0) return res.status(404).json({ message: 'Pembayaran tidak ditemukan' });
 
-    const payment = user.payments?.find((p) => p.id === id);
-    if (!payment) return res.status(404).json({ message: 'Pembayaran tidak ditemukan' });
-
-    return res.status(200).json({ message: 'Pembayaran ditemukan', data: payment });
+    return res.status(200).json({ message: 'Pembayaran ditemukan', data: payment[0] });
 };
 
-
 // ========================= CANCEL PAYMENT =========================
-// POST /payment/cancel-payment/:id
-const cancelPayment = (req, res) => {
+// POST /payment/cancel-payment/:paymentId
+const cancelPayment = async (req, res) => {
     const { paymentId } = req.params;
     const userId = req.user.id;
 
-    if (!paymentId) return res.status(400).json({ message: 'paymentId wajib diisi' });
-
-    const user = users.find((u) => u.id === userId);
-    if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
-
-    const payment = user.payments?.find((p) => p.id === paymentId);
-    if (!payment) return res.status(404).json({ message: 'Pembayaran tidak ditemukan' });
+    const [paymentRows] = await pool.query(
+        'SELECT * FROM payments WHERE id = ? AND userId = ?',
+        [paymentId, userId]
+    );
+    if (paymentRows.length === 0) return res.status(404).json({ message: 'Pembayaran tidak ditemukan' });
+    const payment = paymentRows[0];
 
     if (['cancelled', 'refunded', 'paid'].includes(payment.status)) {
         return res.status(400).json({ message: `Pembayaran sudah ${payment.status}` });
     }
 
-    const order = orders.find((o) => o.id === payment.orderId);
-    const product = products.find((p) => p.id === order?.productId);
+    const [orderRows] = await pool.query('SELECT * FROM orders WHERE id = ?', [payment.orderId]);
+    const order = orderRows[0];
 
-    payment.status = 'cancelled';
-    if (order) order.status = 'cancelled';
+    await pool.query('UPDATE payments SET status = ? WHERE id = ?', ['cancelled', paymentId]);
+    await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['cancelled', payment.orderId]);
 
     // Kembalikan stok
-    if (product && order) {
-        const selectedSize = product.sizes.find(
-            (s) => s.size.toLowerCase() === order.size.toLowerCase()
+    if (order) {
+        await pool.query(
+            'UPDATE product_sizes SET stock = stock + ? WHERE productId = ? AND size = ?',
+            [order.quantity, order.productId, order.size]
         );
-        if (selectedSize) selectedSize.stock += order.quantity;
     }
+
+    const [updated] = await pool.query('SELECT * FROM payments WHERE id = ?', [paymentId]);
 
     return res.status(200).json({
         message: 'Pembayaran berhasil dibatalkan',
-        data: payment,
+        data: updated[0],
     });
 };
 
