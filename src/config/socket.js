@@ -1,6 +1,5 @@
 let io;
 
-const setIo = (socketIo) => { io = socketIo; }
 const init = (httpServer) => {
     const { Server } = require('socket.io');
     io = new Server(httpServer, {
@@ -17,4 +16,4 @@ const getIo = () => {
     return io;
 };
 
-module.exports = { init, getIo, setIo };
+module.exports = { init, getIo };

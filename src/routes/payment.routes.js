@@ -1,13 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { createPayment, getPayments, getPaymentById, getAllPayments, cancelPayment, handleWebhook } = require('@/controllers/payment.controller');
+const {getPayments, getPaymentById, getAllPayments, cancelPayment, handleWebhook } = require('@/controllers/payment.controller');
 const { authMiddleware } = require('@/middleware/auth.middleware');
 const { roleMiddleware } = require('@/middleware/role.middleware');
 
-router.post('/create', authMiddleware, createPayment);
 router.get('/my-payments', authMiddleware, getPayments);
-router.get('/payments/:id', authMiddleware, getPaymentById);
-router.post('/cancel/:id', authMiddleware, cancelPayment);
+router.get('/payments/:paymentId', authMiddleware, getPaymentById);
+router.post('/cancel/:paymentId', authMiddleware, cancelPayment);
 router.post('/webhook', handleWebhook);
 
 router.get('/config', (req, res) => {

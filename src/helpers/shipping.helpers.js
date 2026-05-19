@@ -22,7 +22,6 @@ const rajaongkirGet = async (path, params = {}) => {
 const rajaongkirPost = async (path, payload = {}) => {
     try {
         const stringified = qs.stringify(payload);
-        console.log('QS STRINGIFIED:', stringified); // ← cek ini di terminal
         const response = await axios.post(
             `${RAJAONGKIR_BASE_URL}${path}`,
             stringified,

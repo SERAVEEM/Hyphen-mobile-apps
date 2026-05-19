@@ -1,23 +1,18 @@
+// src/data/users.data.js — ganti isinya
 const bcrypt = require('bcrypt');
-let users = [];
+const pool = require('@/config/db');
+const { v4: uuidv4 } = require('uuid');
 
 const initAdmin = async () => {
-    const adminExists = users.some(user => user.role === 'admin');
-    if (adminExists) return;
+    const [existing] = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+    if (existing.length > 0) return;
 
-    const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
-    users.push( {
-        id: 'admin001',
-        username: 'admin123',
-        email : 'admin123@gmail.com',
-        password : hashedPassword,
-        isVerified: true,
-        role : 'admin',
-        wishlist: [],
-        cart: [],
-        orders: [],
-        payments: []
-        
-    });
+    const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+    await pool.query(
+        'INSERT INTO users (id, username, email, password, role, isVerified) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuidv4(), 'admin123', 'admin123@gmail.com', hashedPassword, 'admin', 1]
+    );
+    console.log('✅ Admin berhasil dibuat');
 };
-module.exports = { users, initAdmin };
+
+module.exports = { initAdmin };
