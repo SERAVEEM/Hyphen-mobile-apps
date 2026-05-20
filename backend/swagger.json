@@ -526,7 +526,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Verifikasi email dengan OTP",
+        "summary": "Verifikasi email dengan OTP yang dikirim ke email saat register",
         "requestBody": {
           "required": true,
           "content": {

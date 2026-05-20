@@ -132,6 +132,7 @@ DB_USER=root
 DB_PASSWORD=
 DB_NAME=hypen_db
 PORT=3000
+FRONTEND_URL=http://localhost:8080
 
 SECRET_KEY=
 REFRESH_SECRET_KEY=
@@ -189,7 +190,3 @@ CTRL + C
 * Email Notification
 
 ---
-
-# 👨‍💻 Author
-
-Developed for learning and backend development practice.

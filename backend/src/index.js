@@ -5,6 +5,7 @@ initAdmin();
 
 const express = require('express');
 const http = require('http');
+const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const db = require('@/config/db');
 const swaggerUi = require('swagger-ui-express');
@@ -27,6 +28,10 @@ const server = http.createServer(app);
 const io = require('@/config/socket').init(server);
 
 //=== Middleware ===
+//=== Middleware ===
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -127,6 +132,6 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running successfully
 Environment : ${process.env.NODE_ENV || 'development'}
-Server URL  : http://localhost:${PORT}
+Server URL  : http://localhost:${PORT}/api/v1
 Swagger Docs: http://localhost:${PORT}/api-docs`);
 });
