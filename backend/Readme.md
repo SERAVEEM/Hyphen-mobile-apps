@@ -107,7 +107,7 @@ Setelah server berhasil berjalan, akan muncul informasi berikut:
 ```txt
 🚀 Server running successfully
 Environment : development
-Server URL  : http://localhost:3000
+Server URL  : http://localhost:3000/api/v1
 Swagger Docs: http://localhost:3000/api-docs
 ```
 
