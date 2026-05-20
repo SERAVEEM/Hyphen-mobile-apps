@@ -1,6 +1,30 @@
-# E-commerce backend HYPEN. 
+# 🛒 HYPEN E-Commerce Backend
 
-Struktur folder:
+Backend API untuk aplikasi E-Commerce **HYPEN** menggunakan Node.js dan Express.
+
+---
+
+## 📦 Tech Stack
+
+* **Node.js** — Runtime environment
+* **Express.js** — Backend framework
+* **bcrypt** — Hash password
+* **jsonwebtoken** — Verifikasi JWT Token
+* **socket.io** — Real-time chat
+* **Midtrans** — Payment gateway
+* **RajaOngkir** — Cek ongkir & pengiriman
+* **uuid** — Generate unique ID
+* **dotenv** — Membaca file `.env`
+* **module-alias** — Mempermudah import path
+* **nodemailer** — Email service
+* **swagger-ui-express** — Dokumentasi API
+* **nodemon** — Auto restart server saat development
+
+---
+
+# 📁 Struktur Folder
+
+```bash
 MHSBe2/
 ├── src/
 │   ├── index.js
@@ -17,43 +41,89 @@ MHSBe2/
 ├── .gitignore
 ├── package.json
 └── README.md
+```
 
-Langkah - langkah:
+---
 
-Install :
-- npm install 
+# ⚙️ Instalasi
 
-isi package :
-- node.js : runtime env
-- express : Framework
-- brycpt : Hash pw
-- midtrans
-- RajaOngkir
-- socket.io
-- jsonwebtoken : verify JWT Token
-- uuid : Generate ID
-- dotenv : baca file env
-- module-alias : path untuk import (@) contoh : (@/data/product.data)
-- nodemailer : 
-- swagger-ui-express : Dokumentasi API
-# cara run swagger -> http://localhost:3000/api-docs/
-# kalau mau refresh/restart wajib save dulu/ ketik rs
-- nodemon : Auto restart server saat development
+## 1. Clone Repository
 
-# run:
- $ npm run dev -> mode development (supaya bisa lgsung refresh/restart)
- $ npm run start -> mode production
-# tambahkan juga terminal kedua untuk run ngrok -> untuk payment gateway
-$ ngrok http 3000
+```bash
+git clone <repository-url>
+cd MHSBe2
+```
 
-# putusin run :
-CTRL + C
+## 2. Install Dependencies
 
+```bash
+npm install
+```
 
-# Akun default admin :
+---
+
+# ▶️ Menjalankan Project
+
+## Development Mode
+
+```bash
+npm run dev
+```
+
+Mode development menggunakan **nodemon** sehingga server akan otomatis restart saat ada perubahan file.
+
+> Jika server tidak refresh otomatis, coba simpan file terlebih dahulu atau ketik:
+
+```bash
+rs
+```
+
+---
+
+## Production Mode
+
+```bash
+npm run start
+```
+
+---
+
+# 🌐 Menjalankan Ngrok (Untuk Midtrans Callback)
+
+Jalankan terminal kedua:
+
+```bash
+ngrok http 3000
+```
+
+Gunakan URL dari Ngrok untuk kebutuhan callback/payment gateway.
+
+---
+
+# 📘 API Documentation (Swagger)
+
+Setelah server berjalan, buka:
+
+```bash
+http://localhost:3000/api-docs/
+```
+
+---
+
+# 🔐 Default Admin Account
+
+```txt
 Email : admin123@gmail.com
-Pw : admin123
+Password : admin123
+```
 
+---
+
+# ⚡ Environment Variables
+
+Buat file `.env` lalu isi seperti berikut:
+
+```env
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=
@@ -72,6 +142,51 @@ CLOUDINARY_API_SECRET=
 
 SMTP_USER=
 SMTP_PASS=
+```
 
-untuk frontend :
-npm install socket.io-client (Buat fitur chat)
+---
+
+# 📡 Socket.io Client (Frontend)
+
+Untuk fitur chat realtime pada frontend:
+
+```bash
+npm install socket.io-client
+```
+
+---
+
+# 📥 Import Path Alias
+
+Contoh penggunaan alias import:
+
+```js
+import productData from '@/data/product.data'
+```
+
+---
+
+# 🛑 Menghentikan Server
+
+```bash
+CTRL + C
+```
+
+---
+
+# 🚀 Features
+
+* Authentication & Authorization
+* JWT Access & Refresh Token
+* Realtime Chat
+* Payment Gateway Integration (Midtrans)
+* Shipping Cost Integration (RajaOngkir)
+* API Documentation dengan Swagger
+* Upload Image dengan Cloudinary
+* Email Notification
+
+---
+
+# 👨‍💻 Author
+
+Developed for learning and backend development practice.
