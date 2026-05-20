@@ -50,8 +50,8 @@ MHSBe2/
 ## 1. Clone Repository
 
 ```bash
-git clone <repository-url>
-cd MHSBe2
+git clone https://github.com/SERAVEEM/Hyphen-mobile-apps.git
+cd backend
 ```
 
 ## 2. Install Dependencies
