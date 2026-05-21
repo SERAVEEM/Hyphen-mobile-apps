@@ -6,6 +6,9 @@ import 'CartPage.dart';
 import 'cart_manager.dart';
 import 'cart_helper.dart';
 import 'mock_products.dart';
+import 'SellPage.dart';
+import 'product_manager.dart';
+import 'AdminPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,6 +19,32 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  int _devTapCount = 0;
+  DateTime? _lastDevTapTime;
+
+  void _onDeveloperTap() {
+    final now = DateTime.now();
+    if (_lastDevTapTime == null || now.difference(_lastDevTapTime!) > const Duration(seconds: 2)) {
+      _devTapCount = 1;
+    } else {
+      _devTapCount++;
+    }
+    _lastDevTapTime = now;
+
+    if (_devTapCount >= 3) {
+      _devTapCount = 0; // Reset counter
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Welcome Admin! Entering Admin Portal...'),
+          duration: Duration(milliseconds: 800),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const AdminPage()),
+      );
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -30,13 +59,17 @@ class _HomePageState extends State<HomePage> {
           icon: const Icon(Icons.menu, color: Colors.black),
           onPressed: () {},
         ),
-        title: Text(
-          'HYPEN.',
-          style: GoogleFonts.plusJakartaSans(
-            color: brandBrown,
-            fontWeight: FontWeight.w700,
-            fontSize: 20, 
-            letterSpacing: 1.0,
+        title: GestureDetector(
+          onTap: _onDeveloperTap,
+          behavior: HitTestBehavior.opaque,
+          child: Text(
+            'HYPEN.',
+            style: GoogleFonts.plusJakartaSans(
+              color: brandBrown,
+              fontWeight: FontWeight.w700,
+              fontSize: 20, 
+              letterSpacing: 1.0,
+            ),
           ),
         ),
         centerTitle: true,
@@ -127,6 +160,15 @@ class _HomePageState extends State<HomePage> {
         return _buildHomeFeed(brandBrown);
       case 1:
         return const SearchPage();
+      case 2:
+        return SellPage(
+          showAppBar: false,
+          onUploadSuccess: () {
+            setState(() {
+              _selectedIndex = 0; // Return to home on successful upload
+            });
+          },
+        );
       case 4:
         return UserProfile(
           onJualPressed: () => setState(() => _selectedIndex = 2),
@@ -180,18 +222,26 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           
-          // For You Carousel
-          SizedBox(
-            height: 480, // Increased height to fix overflow and push Hot Items down
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              children: [
-                _buildProductCard(mockProducts[0]),
-                const SizedBox(width: 16),
-                _buildProductCard(mockProducts[4]),
-              ],
-            ),
+          // For You Carousel (Dynamic using ProductManager)
+          ListenableBuilder(
+            listenable: ProductManager(),
+            builder: (context, child) {
+              final products = ProductManager().products.where((p) => p.isVerified).toList();
+              return SizedBox(
+                height: 520,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 0.0, bottom: 0.0),
+                  itemCount: products.length > 5 ? 5 : products.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 16.0),
+                      child: _buildProductCard(products[index]),
+                    );
+                  },
+                ),
+              );
+            },
           ),
           
           const SizedBox(height: 24),
@@ -236,18 +286,28 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
-                // Hot Items Carousel
-                SizedBox(
-                  height: 480,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    children: [
-                      _buildProductCard(mockProducts[0], onDark: true),
-                      const SizedBox(width: 16),
-                      _buildProductCard(mockProducts[4], onDark: true),
-                    ],
-                  ),
+                // Hot Items Carousel (Dynamic using ProductManager)
+                ListenableBuilder(
+                  listenable: ProductManager(),
+                  builder: (context, child) {
+                    final products = ProductManager().products.where((p) => p.isVerified).toList();
+                    // Show a different set or reverse order of products for variety
+                    final displayProducts = products.reversed.toList();
+                    return SizedBox(
+                      height: 520,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 0.0, bottom: 0.0),
+                        itemCount: displayProducts.length > 5 ? 5 : displayProducts.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 16.0),
+                            child: _buildProductCard(displayProducts[index], onDark: true),
+                          );
+                        },
+                      ),
+                    );
+                  },
                 ),
                 // Space to avoid BottomNavigationBar overlapping content
                 const SizedBox(height: 100), 

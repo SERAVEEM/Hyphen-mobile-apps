@@ -150,4 +150,21 @@ class OrderManager extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void updateOrderStatus(String orderId, OrderStatus status) {
+    for (int i = 0; i < _orders.length; i++) {
+      if (_orders[i].orderId == orderId) {
+        _orders[i] = OrderItem(
+          orderId: _orders[i].orderId,
+          product: _orders[i].product,
+          size: _orders[i].size,
+          quantity: _orders[i].quantity,
+          price: _orders[i].price,
+          status: status,
+          orderDate: _orders[i].orderDate,
+        );
+      }
+    }
+    notifyListeners();
+  }
 }

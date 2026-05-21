@@ -151,6 +151,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: double.infinity,
+                cacheWidth: 600,
               ),
             ),
           ),

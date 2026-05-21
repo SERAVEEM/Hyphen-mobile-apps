@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'EditProfilePage.dart';
 import 'OrderHistoryPage.dart';
+import 'SellerProductsPage.dart';
 
 class UserProfile extends StatelessWidget {
   final VoidCallback? onJualPressed;
@@ -32,6 +33,21 @@ class UserProfile extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const OrderHistoryPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Seller Dashboard List Item
+          _buildMenuItem(
+            icon: Icons.storefront_outlined,
+            title: 'Seller Dashboard',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SellerProductsPage(),
                 ),
               );
             },
