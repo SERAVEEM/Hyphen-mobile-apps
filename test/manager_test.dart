@@ -93,6 +93,55 @@ void main() {
       productManager.deleteProduct('test_product_delete');
       expect(productManager.products.any((p) => p.id == 'test_product_delete'), false);
     });
+
+    test('Product verification flow test', () {
+      // 1. Create a new product which starts as unverified (isVerified: false)
+      final newProduct = Product(
+        id: 'verification_test_prod',
+        title: 'Verification Test Hoodie',
+        brand: 'Alex Rivera',
+        price: 250000,
+        imageUrl: 'assets/images/cat_daily.png',
+        size: 'M',
+        condition: 'Sangat Baik',
+        category: 'Daily',
+        isVerified: false,
+      );
+
+      // Add to ProductManager
+      productManager.addProduct(newProduct);
+
+      // Verify that the product is indeed in the list but isVerified is false
+      final addedProduct = productManager.products.firstWhere((p) => p.id == 'verification_test_prod');
+      expect(addedProduct.isVerified, false);
+
+      // Verify that the home feed filter (only verified) omits this product
+      final homeFeedList = productManager.products.where((p) => p.isVerified).toList();
+      expect(homeFeedList.any((p) => p.id == 'verification_test_prod'), false);
+
+      // Verify that the search filter (only verified) omits this product
+      final searchList = productManager.products.where((p) => p.isVerified).toList();
+      expect(searchList.any((p) => p.id == 'verification_test_prod'), false);
+
+      // 2. Approve/Verify the product in the verification queue
+      final verifiedProduct = addedProduct.copyWith(isVerified: true);
+      productManager.updateProduct(verifiedProduct);
+
+      // Verify that isVerified is now true
+      final updatedProduct = productManager.products.firstWhere((p) => p.id == 'verification_test_prod');
+      expect(updatedProduct.isVerified, true);
+
+      // Verify that it is now included in the home feed list (verified products)
+      final homeFeedListAfter = productManager.products.where((p) => p.isVerified).toList();
+      expect(homeFeedListAfter.any((p) => p.id == 'verification_test_prod'), true);
+
+      // Verify that it is now included in the search list (verified products)
+      final searchListAfter = productManager.products.where((p) => p.isVerified).toList();
+      expect(searchListAfter.any((p) => p.id == 'verification_test_prod'), true);
+
+      // Clean up
+      productManager.deleteProduct('verification_test_prod');
+    });
   });
 
   group('OrderManager Tests', () {

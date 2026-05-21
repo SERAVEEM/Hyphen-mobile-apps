@@ -342,6 +342,7 @@ class _EditProductPageState extends State<EditProductPage> {
       size: _selectedSize,
       condition: _selectedCondition,
       category: _selectedCategory,
+      isVerified: widget.product.isVerified,
     );
 
     // Save to global state

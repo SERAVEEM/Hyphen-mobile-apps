@@ -358,6 +358,7 @@ class _SellPageState extends State<SellPage> {
       size: _selectedSize,
       condition: _selectedCondition,
       category: _selectedCategory,
+      isVerified: false,
     );
 
     // Save to global state

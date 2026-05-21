@@ -7,6 +7,7 @@ class Product {
   final String size;
   final String condition;
   final String category; // 'Wanita', 'Pria', 'Formal', 'Daily'
+  final bool isVerified;
 
   const Product({
     required this.id,
@@ -17,7 +18,32 @@ class Product {
     required this.size,
     required this.condition,
     required this.category,
+    this.isVerified = true,
   });
+
+  Product copyWith({
+    String? id,
+    String? title,
+    String? brand,
+    double? price,
+    String? imageUrl,
+    String? size,
+    String? condition,
+    String? category,
+    bool? isVerified,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      brand: brand ?? this.brand,
+      price: price ?? this.price,
+      imageUrl: imageUrl ?? this.imageUrl,
+      size: size ?? this.size,
+      condition: condition ?? this.condition,
+      category: category ?? this.category,
+      isVerified: isVerified ?? this.isVerified,
+    );
+  }
 
   String get formattedPrice {
     // Basic Indonesian Rupiah formatting: Rp 250.000

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'mock_products.dart';
 import 'cart_helper.dart';
+import 'product_manager.dart';
 
 class SearchResultsPage extends StatefulWidget {
   final String? initialQuery;
@@ -46,7 +47,10 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   }
 
   List<Product> get _filteredProducts {
-    return mockProducts.where((product) {
+    return ProductManager().products.where((product) {
+      // Only display verified products
+      if (!product.isVerified) return false;
+
       // 1. Partial Text Match
       final query = _currentQuery?.toLowerCase().trim() ?? '';
       final matchesQuery = query.isEmpty ||
@@ -91,7 +95,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   @override
   Widget build(BuildContext context) {
     const Color brandBrown = Color(0xFF8C7355);
-    final results = _filteredProducts;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -168,22 +171,28 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         ),
       ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Active Filters indicator
-            _buildActiveFiltersBar(brandBrown),
+        child: ListenableBuilder(
+          listenable: ProductManager(),
+          builder: (context, child) {
+            final results = _filteredProducts;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Active Filters indicator
+                _buildActiveFiltersBar(brandBrown),
 
-            // Main Results view
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: results.isEmpty
-                    ? _buildEmptyState(brandBrown)
-                    : _buildProductsGrid(results),
-              ),
-            ),
-          ],
+                // Main Results view
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: results.isEmpty
+                        ? _buildEmptyState(brandBrown)
+                        : _buildProductsGrid(results),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -485,54 +494,59 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             const SizedBox(height: 16),
             SizedBox(
               height: 220,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: mockProducts.length > 5 ? 5 : mockProducts.length,
-                itemBuilder: (context, index) {
-                  final product = mockProducts[index];
-                  return GestureDetector(
-                    onTap: () => CartHelper.showSizeSelector(context, product),
-                    child: Container(
-                      width: 140,
-                      margin: const EdgeInsets.only(right: 12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.asset(
-                                product.imageUrl,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
+              child: Builder(
+                builder: (context) {
+                  final recProducts = ProductManager().products.where((p) => p.isVerified).toList();
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: recProducts.length > 5 ? 5 : recProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = recProducts[index];
+                      return GestureDetector(
+                        onTap: () => CartHelper.showSizeSelector(context, product),
+                        child: Container(
+                          width: 140,
+                          margin: const EdgeInsets.only(right: 12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.asset(
+                                    product.imageUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 6),
+                              Text(
+                                product.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              Text(
+                                product.formattedPrice,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: brandBrown,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            product.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
-                            ),
-                          ),
-                          Text(
-                            product.formattedPrice,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: brandBrown,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   );
-                },
+                }
               ),
             ),
           ],
