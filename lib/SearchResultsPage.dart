@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'mock_products.dart';
+import 'cart_helper.dart';
 
 class SearchResultsPage extends StatefulWidget {
   final String? initialQuery;
@@ -317,89 +318,92 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   }
 
   Widget _buildResultCard(Product product) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Product image with favorite overlay
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  product.imageUrl,
-                  fit: BoxFit.cover,
-                ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(
-                      Icons.favorite_border,
-                      size: 16,
-                      color: Colors.black,
-                    ),
+    return GestureDetector(
+      onTap: () => CartHelper.showSizeSelector(context, product),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Product image with favorite overlay
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    product.imageUrl,
+                    fit: BoxFit.cover,
                   ),
-                ),
-                Positioned(
-                  bottom: 8,
-                  left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${product.size} · ${product.condition}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      decoration: const BoxDecoration(
                         color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(6),
+                      child: const Icon(
+                        Icons.favorite_border,
+                        size: 16,
+                        color: Colors.black,
                       ),
                     ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${product.size} · ${product.condition}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          product.brand,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Colors.black54,
+          const SizedBox(height: 8),
+          Text(
+            product.brand,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.black54,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          product.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
+          const SizedBox(height: 2),
+          Text(
+            product.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          product.formattedPrice,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: Colors.black,
+          const SizedBox(height: 4),
+          Text(
+            product.formattedPrice,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -487,42 +491,45 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 itemCount: mockProducts.length > 5 ? 5 : mockProducts.length,
                 itemBuilder: (context, index) {
                   final product = mockProducts[index];
-                  return Container(
-                    width: 140,
-                    margin: const EdgeInsets.only(right: 12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.asset(
-                              product.imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
+                  return GestureDetector(
+                    onTap: () => CartHelper.showSizeSelector(context, product),
+                    child: Container(
+                      width: 140,
+                      margin: const EdgeInsets.only(right: 12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                product.imageUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          product.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
+                          const SizedBox(height: 6),
+                          Text(
+                            product.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
                           ),
-                        ),
-                        Text(
-                          product.formattedPrice,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: brandBrown,
+                          Text(
+                            product.formattedPrice,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: brandBrown,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },

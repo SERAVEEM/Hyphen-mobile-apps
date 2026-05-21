@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'UserProfile.dart';
 import 'SearchPage.dart';
+import 'CartPage.dart';
+import 'cart_manager.dart';
+import 'cart_helper.dart';
+import 'mock_products.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -37,9 +41,52 @@ class _HomePageState extends State<HomePage> {
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black),
-            onPressed: () {},
+          ListenableBuilder(
+            listenable: CartManager(),
+            builder: (context, child) {
+              final count = CartManager().totalQuantity;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CartPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -139,19 +186,9 @@ class _HomePageState extends State<HomePage> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               children: [
-                _buildProductCard(
-                  imageUrl: 'assets/images/PreFall.png', // Temporary placeholder
-                  title: 'Jacket Luxury',
-                  subtitle: 'L · Sangat Baik',
-                  price: 'Rp 250.000',
-                ),
+                _buildProductCard(mockProducts[0]),
                 const SizedBox(width: 16),
-                _buildProductCard(
-                  imageUrl: 'assets/images/slide1.png', // Temporary placeholder
-                  title: 'Jacket Premium',
-                  subtitle: 'M · Baik',
-                  price: 'Rp 250.000',
-                ),
+                _buildProductCard(mockProducts[4]),
               ],
             ),
           ),
@@ -205,21 +242,9 @@ class _HomePageState extends State<HomePage> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     children: [
-                      _buildProductCard(
-                        imageUrl: 'assets/images/PreFall.png',
-                        title: 'Jacket Luxury',
-                        subtitle: 'L · Sangat Baik',
-                        price: 'Rp 250.000',
-                        onDark: true,
-                      ),
+                      _buildProductCard(mockProducts[0], onDark: true),
                       const SizedBox(width: 16),
-                      _buildProductCard(
-                        imageUrl: 'assets/images/slide1.png',
-                        title: 'Jacket Premium',
-                        subtitle: 'M · Baik',
-                        price: 'Rp 250.000',
-                        onDark: true,
-                      ),
+                      _buildProductCard(mockProducts[4], onDark: true),
                     ],
                   ),
                 ),
@@ -233,59 +258,56 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProductCard({
-    required String imageUrl,
-    required String title,
-    required String subtitle,
-    required String price,
-    bool onDark = false,
-  }) {
+  Widget _buildProductCard(Product product, {bool onDark = false}) {
     final Color titleColor = onDark ? Colors.white : Colors.black;
     final Color subtitleColor = onDark ? Colors.white70 : Colors.black54;
     final Color priceColor = onDark ? Colors.white : Colors.black;
 
-    return SizedBox(
-      width: 280,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: Image.asset(
-              imageUrl,
-              height: 360,
-              width: 280,
-              fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () => CartHelper.showSizeSelector(context, product),
+      child: SizedBox(
+        width: 280,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: Image.asset(
+                product.imageUrl,
+                height: 360,
+                width: 280,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: titleColor,
+            const SizedBox(height: 12),
+            Text(
+              product.title,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: titleColor,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              color: subtitleColor,
+            const SizedBox(height: 4),
+            Text(
+              '${product.size} · ${product.condition}',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: subtitleColor,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            price,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
-              fontWeight: FontWeight.w300,
-              color: priceColor,
+            const SizedBox(height: 8),
+            Text(
+              product.formattedPrice,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
+                color: priceColor,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
