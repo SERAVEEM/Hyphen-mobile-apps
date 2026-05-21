@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'cart_manager.dart';
 import 'CheckoutPage.dart'; // import PaymentOption
+import 'order_manager.dart';
 
 class PaymentPage extends StatefulWidget {
   final List<CartItem> checkoutItems;
@@ -106,6 +107,9 @@ class _PaymentPageState extends State<PaymentPage> {
         _isProcessing = false;
         _step = 2; // Transition to Congratulations
       });
+
+      // Add order details to OrderManager
+      OrderManager().addOrderFromCheckout(_orderId, widget.checkoutItems);
 
       // Clear purchased items from Cart
       final cartManager = CartManager();

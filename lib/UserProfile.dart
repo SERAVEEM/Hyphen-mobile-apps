@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'EditProfilePage.dart';
+import 'OrderHistoryPage.dart';
 
 class UserProfile extends StatelessWidget {
   final VoidCallback? onJualPressed;
@@ -27,7 +28,12 @@ class UserProfile extends StatelessWidget {
             icon: Icons.receipt_long_outlined,
             title: 'Order History',
             onTap: () {
-              // TODO: Integrate order history action
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const OrderHistoryPage(),
+                ),
+              );
             },
           ),
           const SizedBox(height: 16),
