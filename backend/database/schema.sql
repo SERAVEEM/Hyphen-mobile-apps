@@ -1,6 +1,9 @@
 -- ============================================================
 -- SCHEMA SQL - MHSBe2 (E-Commerce Backend)
 -- Database: MySQL
+-- Catatan: checkout_controller wajib UPDATE orders.addressId = ?
+--          setelah insert shipment (addressId nullable saat order dibuat,
+--          diisi saat proses checkout)
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS hypen_db CHARACTER
 SET
@@ -16,7 +19,7 @@ CREATE TABLE
         id VARCHAR(36) NOT NULL PRIMARY KEY,
         username VARCHAR(100) NOT NULL,
         email VARCHAR(150) NOT NULL UNIQUE,
-        password VARCHAR(255) NULL,  -- NULL karena Google login tidak punya password
+        password VARCHAR(255) NULL, -- NULL karena Google login tidak punya password
         role ENUM ('user', 'admin', 'seller') NOT NULL DEFAULT 'user',
         isVerified TINYINT (1) NOT NULL DEFAULT 0,
         googleId VARCHAR(255) NULL,
@@ -186,19 +189,19 @@ CREATE TABLE
 
 -- ============================================================
 -- 11. ORDERS
--- FIX 6: kolom "userId" → "buyerID" (sesuai controller & logika buyer/seller)
--- FIX 7: kolom "price" (harga satuan) — controller insert price bukan totalPrice
--- FIX 8: quantity dihapus — barang bekas selalu 1, tidak perlu kolom ini
--- FIX 9: tambah addressId — order perlu tahu alamat pengiriman
+-- kolom userId: buyer yang melakukan order
+-- kolom price: harga satuan produk (quantity selalu 1, barang bekas)
+-- kolom quantity: dihapus — barang bekas selalu 1
+-- kolom addressId: wajib diisi saat checkout, di-UPDATE oleh checkout controller
 -- ============================================================
 CREATE TABLE
     orders (
         id VARCHAR(36) NOT NULL PRIMARY KEY,
-        buyerID VARCHAR(36) NOT NULL,
+        userId VARCHAR(36) NOT NULL,
         productId VARCHAR(36) NOT NULL,
         size VARCHAR(10) NOT NULL,
         price DECIMAL(15, 2) NOT NULL,
-        addressId VARCHAR(36) NULL, -- nullable: buyer isi alamat setelah order
+        addressId VARCHAR(36) NULL, -- diisi saat checkout via UPDATE orders SET addressId
         status ENUM (
             'pending',
             'waiting_payment',
@@ -211,23 +214,22 @@ CREATE TABLE
         ) NOT NULL DEFAULT 'pending',
         orderDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (buyerID) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (productId) REFERENCES products (id) ON DELETE RESTRICT,
         FOREIGN KEY (addressId) REFERENCES addresses (id) ON DELETE SET NULL,
-        INDEX idx_buyerID (buyerID),
+        INDEX idx_userId (userId),
         INDEX idx_status (status),
         INDEX idx_productId (productId)
     );
 
 -- ============================================================
 -- 12. SHIPMENTS
--- FIX 10: userId → buyerID (konsisten dengan orders)
 -- ============================================================
 CREATE TABLE
     shipments (
         id VARCHAR(36) NOT NULL PRIMARY KEY,
         orderId VARCHAR(36) NOT NULL UNIQUE,
-        buyerID VARCHAR(36) NOT NULL,
+        userId VARCHAR(36) NOT NULL,
         addressId VARCHAR(36) NOT NULL,
         courierCode VARCHAR(50) NOT NULL,
         service VARCHAR(50) NOT NULL,
@@ -246,41 +248,46 @@ CREATE TABLE
         createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (orderId) REFERENCES orders (id) ON DELETE CASCADE,
-        FOREIGN KEY (buyerID) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (addressId) REFERENCES addresses (id) ON DELETE RESTRICT,
         INDEX idx_orderId (orderId),
-        INDEX idx_buyerID (buyerID)
+        INDEX idx_userId (userId)
     );
 
--- ============================================================
--- 13. PAYMENTS
--- FIX 11: userId → buyerID (konsisten)
--- ============================================================
+-- ================================================
+-- TABEL PAYMENTS (tanpa orderId langsung)
+-- ================================================
 CREATE TABLE
     payments (
         id VARCHAR(36) NOT NULL PRIMARY KEY,
-        orderId VARCHAR(36) NOT NULL,
-        buyerID VARCHAR(36) NOT NULL,
+        userId VARCHAR(36) NOT NULL,
         amount DECIMAL(15, 2) NOT NULL,
         paymentMethod VARCHAR(50) NOT NULL,
-        status ENUM (
-            'pending',
-            'paid',
-            'failed',
-            'cancelled',
-            'expired'
-        ) NOT NULL DEFAULT 'pending',
+        status ENUM ('pending', 'paid', 'cancelled', 'expired') NOT NULL DEFAULT 'pending', -- 'failed' dihapus: tidak dipakai di controller, gunakan 'cancelled' untuk tolak/deny
         midtransOrderId VARCHAR(100) NULL UNIQUE,
         snapToken TEXT NULL,
         snapUrl TEXT NULL,
-        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         expiredAt DATETIME NULL,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
+        INDEX idx_userId (userId),
+        INDEX idx_status (status),
+        INDEX idx_midtransOrderId (midtransOrderId)
+    );
+
+-- ================================================
+-- TABEL PAYMENT_ORDERS (pivot: 1 payment → banyak order)
+-- ================================================
+CREATE TABLE
+    payment_orders (
+        paymentId VARCHAR(36) NOT NULL,
+        orderId VARCHAR(36) NOT NULL,
+        PRIMARY KEY (paymentId, orderId),
+        FOREIGN KEY (paymentId) REFERENCES payments (id) ON DELETE CASCADE,
         FOREIGN KEY (orderId) REFERENCES orders (id) ON DELETE CASCADE,
-        FOREIGN KEY (buyerID) REFERENCES users (id) ON DELETE CASCADE,
-        INDEX idx_orderId (orderId),
-        INDEX idx_buyerID (buyerID),
-        INDEX idx_status (status)
+        INDEX idx_paymentId (paymentId),
+        INDEX idx_orderId (orderId)
     );
 
 -- ============================================================
@@ -289,15 +296,15 @@ CREATE TABLE
 CREATE TABLE
     chat_rooms (
         id VARCHAR(36) NOT NULL PRIMARY KEY,
-        buyerId VARCHAR(36) NOT NULL,
+        userId VARCHAR(36) NOT NULL,
         sellerId VARCHAR(36) NOT NULL,
         productId VARCHAR(36) NOT NULL,
         createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (buyerId) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (sellerId) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (productId) REFERENCES products (id) ON DELETE CASCADE,
-        UNIQUE KEY uq_room (buyerId, sellerId, productId),
-        INDEX idx_buyerId (buyerId),
+        UNIQUE KEY uq_room (userId, sellerId, productId),
+        INDEX idx_userId (userId),
         INDEX idx_sellerId (sellerId)
     );
 

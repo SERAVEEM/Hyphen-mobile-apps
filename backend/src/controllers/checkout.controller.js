@@ -15,52 +15,29 @@ const snap = new midtransClient.Snap({
     serverKey: process.env.MIDTRANS_SERVER_KEY,
 });
 
-// ================== CHECKOUT ==================
+// ================== CHECKOUT (single order & cart) ==================
+// Body:
+//   Single : { orderId: "xxx", addressId, courierCode, service, notes }
+//   Cart   : { orderIds: ["xxx","yyy"], addressId, courierCode, service, notes }
 const checkout = async (req, res) => {
     try {
-        const { orderId, addressId, courierCode, service, notes } = req.body;
+        const { orderId, orderIds, addressId, courierCode, service, notes } = req.body;
         const userId = req.user.id;
 
-        // ===== VALIDASI INPUT =====
-        if (!orderId || !addressId || !courierCode || !service) {
-            return res.status(400).json({
-                message: 'orderId, addressId, courierCode, dan service wajib diisi'
-            });
-        }
+        // ===== NORMALISASI INPUT → selalu array =====
+        const ids = orderId ? [orderId] : orderIds;
 
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: 'orderId atau orderIds wajib diisi' });
+        }
+        if (!addressId || !courierCode || !service) {
+            return res.status(400).json({ message: 'addressId, courierCode, dan service wajib diisi' });
+        }
         if (!SUPPORTED_COURIERS.includes(courierCode.toLowerCase())) {
             return res.status(400).json({
                 message: `Kurir '${courierCode}' tidak didukung`,
                 supportedCouriers: SUPPORTED_COURIERS
             });
-        }
-
-        // ===== VALIDASI ORDER =====
-        const [orderRows] = await pool.query(
-            'SELECT * FROM orders WHERE id = ? AND userId = ?',
-            [orderId, userId]
-        );
-        if (orderRows.length === 0) {
-            return res.status(404).json({ message: 'Order tidak ditemukan' });
-        }
-        const order = orderRows[0];
-        if (['cancelled', 'shipped', 'paid', 'waiting_payment'].includes(order.status)) {
-            return res.status(400).json({
-                message: `Order tidak bisa dicheckout, status saat ini: ${order.status}`
-            });
-        }
-
-        // ===== VALIDASI PRODUK =====
-        const [productRows] = await pool.query('SELECT * FROM products WHERE id = ?', [order.productId]);
-        if (productRows.length === 0) {
-            return res.status(404).json({ message: 'Produk tidak ditemukan' });
-        }
-        const product = productRows[0];
-        if (!product.originCityId) {
-            return res.status(400).json({ message: 'Produk belum memiliki kota asal pengiriman' });
-        }
-        if (!product.weight) {
-            return res.status(400).json({ message: 'Produk belum memiliki berat' });
         }
 
         // ===== VALIDASI ALAMAT =====
@@ -76,96 +53,171 @@ const checkout = async (req, res) => {
             return res.status(400).json({ message: 'Alamat belum memiliki destinationCityId' });
         }
 
-        // ===== CEK DUPLIKAT SHIPMENT & PAYMENT =====
-        const [existingShipment] = await pool.query(
-            'SELECT id FROM shipments WHERE orderId = ?',
-            [orderId]
+        // ===== VALIDASI SEMUA ORDER =====
+        // FIX: o.userId (bukan o.buyerID), tidak ada o.quantity & o.totalPrice di schema
+        // Barang bekas: quantity selalu 1, totalPrice = price
+        const placeholders = ids.map(() => '?').join(',');
+        const [orderRows] = await pool.query(
+            `SELECT o.*, p.name AS productName, p.originCityId, p.weight, p.price AS productPrice
+             FROM orders o
+             JOIN products p ON o.productId = p.id
+             WHERE o.id IN (${placeholders}) AND o.userId = ?`,
+            [...ids, userId]
         );
-        if (existingShipment.length > 0) {
-            return res.status(400).json({ message: 'Order ini sudah memiliki pengiriman' });
+
+        if (orderRows.length !== ids.length) {
+            return res.status(404).json({ message: 'Beberapa order tidak ditemukan atau bukan milik kamu' });
         }
 
-        const [existingPayment] = await pool.query(
-            "SELECT id FROM payments WHERE orderId = ? AND status != 'cancelled'",
-            [orderId]
+        const invalidOrders = orderRows.filter(o =>
+            ['cancelled', 'shipped', 'paid', 'waiting_payment'].includes(o.status)
         );
-        if (existingPayment.length > 0) {
-            return res.status(400).json({ message: 'Order ini sudah memiliki pembayaran aktif' });
-        }
-
-        // ===== HITUNG & VERIFIKASI ONGKIR =====
-        const weightGram = Math.max(product.weight * order.quantity, 1000);
-
-        const courierResults = await rajaongkirPost('/calculate/domestic-cost', {
-            origin: product.originCityId,
-            destination: address.destinationCityId,
-            weight: weightGram,
-            courier: courierCode.toLowerCase(),
-            price: 'lowest',
-        });
-
-        const results = Array.isArray(courierResults) ? courierResults : [courierResults];
-        const serviceUpper = service.toUpperCase();
-        const selectedCost = results.find(r => r.service?.toUpperCase() === serviceUpper);
-
-        if (!selectedCost) {
+        if (invalidOrders.length > 0) {
             return res.status(400).json({
-                message: `Service '${service}' tidak tersedia untuk kurir ${courierCode}`,
-                availableServices: results.map(r => r.service)
+                message: 'Beberapa order tidak bisa dicheckout',
+                invalidOrders: invalidOrders.map(o => ({ id: o.id, status: o.status }))
             });
         }
 
-        const shippingCost = selectedCost.cost;
-        const etd = selectedCost.etd || '-';
-        const totalAmount = Number(order.totalPrice) + shippingCost;
+        const missingData = orderRows.filter(o => !o.originCityId || !o.weight);
+        if (missingData.length > 0) {
+            return res.status(400).json({
+                message: 'Beberapa produk belum memiliki originCityId atau weight',
+                products: missingData.map(o => o.productId)
+            });
+        }
 
-        // ===== BUAT SHIPMENT =====
-        const shipmentId = uuidv4();
-
-        await pool.query(
-            `INSERT INTO shipments 
-            (id, userId, orderId, addressId, courierCode, service, courierName, estimatedDays, shippingCost, notes, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                shipmentId, userId, orderId, addressId,
-                courierCode.toLowerCase(), serviceUpper,
-                selectedCost.name, etd, shippingCost,
-                notes ?? null, 'pending'
-            ]
+        // ===== CEK DUPLIKAT SHIPMENT & PAYMENT =====
+        const [existingShipments] = await pool.query(
+            `SELECT orderId FROM shipments WHERE orderId IN (${placeholders})`,
+            ids
         );
+        if (existingShipments.length > 0) {
+            return res.status(400).json({
+                message: 'Beberapa order sudah memiliki pengiriman',
+                orderIds: existingShipments.map(s => s.orderId)
+            });
+        }
+
+        const [existingPayments] = await pool.query(
+            `SELECT po.orderId FROM payment_orders po
+             JOIN payments p ON po.paymentId = p.id
+             WHERE po.orderId IN (${placeholders}) AND p.status != 'cancelled'`,
+            ids
+        );
+        if (existingPayments.length > 0) {
+            return res.status(400).json({
+                message: 'Beberapa order sudah memiliki pembayaran aktif',
+                orderIds: existingPayments.map(p => p.orderId)
+            });
+        }
+
+        // ===== HITUNG ONGKIR (grouping by originCityId) =====
+        const originGroups = {};
+        for (const order of orderRows) {
+            const key = order.originCityId;
+            if (!originGroups[key]) originGroups[key] = [];
+            originGroups[key].push(order);
+        }
+
+        let totalShippingCost = 0;
+        const shipmentDetails = [];
+        const serviceUpper = service.toUpperCase();
+
+        for (const [originCityId, groupOrders] of Object.entries(originGroups)) {
+            // FIX: barang bekas quantity selalu 1, tidak ada kolom quantity di orders
+            const totalWeight = Math.max(
+                groupOrders.reduce((sum, o) => sum + o.weight, 0),
+                1000
+            );
+
+            const courierResults = await rajaongkirPost('/calculate/domestic-cost', {
+                origin: originCityId,
+                destination: address.destinationCityId,
+                weight: totalWeight,
+                courier: courierCode.toLowerCase(),
+                price: 'lowest',
+            });
+
+            const results = Array.isArray(courierResults) ? courierResults : [courierResults];
+            const selectedCost = results.find(r => r.service?.toUpperCase() === serviceUpper);
+
+            if (!selectedCost) {
+                return res.status(400).json({
+                    message: `Service '${service}' tidak tersedia untuk kurir ${courierCode}`,
+                    availableServices: results.map(r => r.service)
+                });
+            }
+
+            totalShippingCost += selectedCost.cost;
+            shipmentDetails.push({
+                originCityId,
+                orders: groupOrders,
+                shippingCost: selectedCost.cost,
+                etd: selectedCost.etd || '-',
+                courierName: selectedCost.name,
+            });
+        }
+
+        // ===== HITUNG TOTAL =====
+        // FIX: gunakan o.price (bukan o.totalPrice), quantity selalu 1
+        const totalProductPrice = orderRows.reduce((sum, o) => sum + Number(o.price), 0);
+        const grandTotal = totalProductPrice + totalShippingCost;
+
+        // ===== BUAT SHIPMENT PER ORDER =====
+        // FIX: kolom userId (bukan userId yang lama / buyerID)
+        const createdShipments = [];
+        for (const group of shipmentDetails) {
+            for (const order of group.orders) {
+                const shipmentId = uuidv4();
+                await pool.query(
+                    `INSERT INTO shipments
+                    (id, userId, orderId, addressId, courierCode, service, courierName, estimatedDays, shippingCost, notes, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        shipmentId, userId, order.id, addressId,
+                        courierCode.toLowerCase(), serviceUpper,
+                        group.courierName, group.etd, group.shippingCost,
+                        notes ?? null, 'pending'
+                    ]
+                );
+                createdShipments.push({ shipmentId, orderId: order.id });
+            }
+        }
 
         // ===== BUAT PAYMENT MIDTRANS =====
         const [userRows] = await pool.query('SELECT username, email FROM users WHERE id = ?', [userId]);
         const user = userRows[0];
 
         const midtransOrderId = `PAY-${Date.now()}`;
+
+        // FIX: gunakan o.price & o.productName, quantity selalu 1 (barang bekas)
+        const item_details = [
+            ...orderRows.map(o => ({
+                id: o.productId,
+                price: Math.round(Number(o.price)),
+                quantity: 1,
+                name: o.productName ?? 'Produk',
+            })),
+            ...shipmentDetails.map((g, i) => ({
+                id: `SHIPPING-${i + 1}`,
+                price: g.shippingCost,
+                quantity: 1,
+                name: `Ongkir ${g.courierName} - ${serviceUpper}`,
+            }))
+        ];
+
         const midtransParam = {
             transaction_details: {
                 order_id: midtransOrderId,
-                gross_amount: totalAmount,
+                gross_amount: grandTotal,
             },
             customer_details: {
                 first_name: user.username,
                 email: user.email,
             },
-            item_details: [
-                {
-                    id: order.productId,
-                    price: Math.round(Number(order.totalPrice) / order.quantity),
-                    quantity: order.quantity,
-                    name: product.name ?? 'Produk',
-                },
-                {
-                    id: 'SHIPPING',
-                    price: shippingCost,
-                    quantity: 1,
-                    name: `Ongkir ${selectedCost.name} - ${serviceUpper}`,
-                }
-            ],
-            expiry: {
-                unit: 'hours',
-                duration: 24,
-            },
+            item_details,
+            expiry: { unit: 'hours', duration: 24 },
             enabled_payments: [
                 'credit_card', 'bca_va', 'bni_va', 'bri_va',
                 'permata_va', 'mandiri_bill', 'gopay',
@@ -175,22 +227,35 @@ const checkout = async (req, res) => {
 
         const midtransResponse = await snap.createTransaction(midtransParam);
 
+        // ===== SIMPAN PAYMENT =====
+        // FIX: kolom userId (bukan buyerID)
         const paymentId = uuidv4();
         const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         await pool.query(
-            `INSERT INTO payments 
-            (id, orderId, userId, amount, paymentMethod, status, midtransOrderId, snapToken, snapUrl, expiredAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO payments
+            (id, userId, amount, paymentMethod, status, midtransOrderId, snapToken, snapUrl, expiredAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                paymentId, orderId, userId, totalAmount,
+                paymentId, userId, grandTotal,
                 'midtrans', 'pending', midtransOrderId,
                 midtransResponse.token, midtransResponse.redirect_url, expiredAt
             ]
         );
 
-        // ===== UPDATE STATUS ORDER =====
-        await pool.query("UPDATE orders SET status = 'waiting_payment' WHERE id = ?", [orderId]);
+        // ===== SIMPAN RELASI PAYMENT → ORDERS =====
+        for (const id of ids) {
+            await pool.query(
+                'INSERT INTO payment_orders (paymentId, orderId) VALUES (?, ?)',
+                [paymentId, id]
+            );
+        }
+
+        // ===== UPDATE STATUS SEMUA ORDER =====
+        await pool.query(
+            `UPDATE orders SET status = 'waiting_payment' WHERE id IN (${placeholders})`,
+            ids
+        );
 
         // ===== RESPONSE =====
         return res.status(201).json({
@@ -198,34 +263,23 @@ const checkout = async (req, res) => {
             snapUrl: midtransResponse.redirect_url,
             snapToken: midtransResponse.token,
             data: {
-                order: {
-                    id: order.id,
-                    status: 'waiting_payment',
-                    totalPrice: order.totalPrice,
-                },
-                shipment: {
-                    id: shipmentId,
-                    courierName: selectedCost.name,
-                    service: serviceUpper,
-                    etd,
-                    shippingCost,
-                },
+                totalOrders: orderRows.length,
+                totalProductPrice,
+                totalShippingCost,
+                grandTotal,
+                expiredAt,
+                shipments: createdShipments,
                 payment: {
                     id: paymentId,
-                    productPrice: order.totalPrice,
-                    shippingCost,
-                    totalAmount,
-                    expiredAt,
+                    midtransOrderId,
                     snapUrl: midtransResponse.redirect_url,
                 }
             }
         });
 
     } catch (error) {
-        return res.status(500).json({
-            message: 'Checkout gagal',
-            error: error.message
-        });
+        console.error('checkout error:', error);
+        return res.status(500).json({ message: 'Checkout gagal', error: error.message });
     }
 };
 

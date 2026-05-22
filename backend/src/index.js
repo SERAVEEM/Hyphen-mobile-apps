@@ -29,7 +29,6 @@ const server = http.createServer(app);
 const io = require('@/config/socket').init(server);
 
 //=== Middleware ===
-//=== Middleware ===
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
 }));

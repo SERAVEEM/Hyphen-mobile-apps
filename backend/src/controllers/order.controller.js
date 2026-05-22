@@ -80,9 +80,17 @@ const createOrderFromCart = async (req, res) => {
                 [item.productId]
             );
             if (product.length === 0) {
-                errors.push(`Produk tidak ditemukan`);
+                // FIX 1: pesan error lebih informatif dengan menyebut productId
+                errors.push(`Produk dengan id ${item.productId} tidak ditemukan atau belum disetujui`);
                 continue;
             }
+
+            // FIX 2: cek seller tidak bisa beli produk sendiri lewat cart
+            if (product[0].sellerID === buyerID) {
+                errors.push(`Tidak bisa membeli produk sendiri: ${product[0].name}`);
+                continue;
+            }
+
             const [selectedSize] = await pool.query(
                 'SELECT * FROM product_sizes WHERE productId = ? AND size = ? AND stock > 0',
                 [item.productId, item.size.toUpperCase()]
@@ -94,9 +102,10 @@ const createOrderFromCart = async (req, res) => {
 
             const orderId = uuidv4();
 
+            // FIX 3: hapus duplikat value 'pending' — 6 kolom harus 6 value
             await pool.query(
                 'INSERT INTO orders (id, buyerID, productId, size, price, status) VALUES (?, ?, ?, ?, ?, "pending")',
-                [orderId, buyerID, item.productId, item.size.toUpperCase(), product[0].price, 'pending']
+                [orderId, buyerID, item.productId, item.size.toUpperCase(), product[0].price]
             );
 
             await pool.query(
@@ -108,7 +117,18 @@ const createOrderFromCart = async (req, res) => {
             newOrders.push(detail);
         }
 
-        await pool.query('DELETE FROM cart_items WHERE userId = ?', [buyerID]);
+        // FIX 4: hanya hapus cart jika minimal 1 order berhasil dibuat
+        if (newOrders.length > 0) {
+            await pool.query('DELETE FROM cart_items WHERE userId = ?', [buyerID]);
+        }
+
+        // FIX 5: kembalikan 400 jika tidak ada satu pun order berhasil
+        if (newOrders.length === 0) {
+            return res.status(400).json({
+                message: 'Semua item gagal diproses, cart tidak dihapus',
+                errors
+            });
+        }
 
         return res.status(201).json({
             message: `${newOrders.length} order berhasil dibuat${errors.length > 0 ? `, ${errors.length} gagal` : ''}`,

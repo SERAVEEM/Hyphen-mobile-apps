@@ -12,4 +12,4 @@ router.get('/:roomId/messages', authMiddleware, getMessages);
 router.post('/:roomId/send', authMiddleware, sendMessage);
 router.post('/upload', authMiddleware, upload.single('image'), uploadChatImage);
 
-module.exports = router;
+module.exports = router;    

@@ -30,7 +30,7 @@ const getOrCreateRoom = async (req, res) => {
         // Buat room baru
         const id = uuidv4();
         await db.query(
-            'INSERT INTO chat_rooms (id, buyerId, sellerId, productId) VALUES (?, ?, ?, ?)',
+            'INSERT INTO chat_rooms (id, userId, sellerId, productId) VALUES (?, ?, ?, ?)',
             [id, buyerId, sellerId, productId]
         );
 
@@ -62,7 +62,7 @@ const getMyRooms = async (req, res) => {
                 (SELECT COUNT(*) FROM chat_messages cm 
                  WHERE cm.roomId = cr.id AND cm.isRead = 0 AND cm.senderId != ?) as unreadCount
              FROM chat_rooms cr
-             WHERE cr.buyerId = ? OR cr.sellerId = ?
+             WHERE cr.userId = ? OR cr.sellerId = ?
              ORDER BY lastMessageAt DESC`,
             [userId, userId, userId]
         );
@@ -88,7 +88,7 @@ const getMessages = async (req, res) => {
 
         // Validasi user adalah member room
         const [room] = await db.query(
-            'SELECT * FROM chat_rooms WHERE id = ? AND (buyerId = ? OR sellerId = ?)',
+            'SELECT * FROM chat_rooms WHERE id = ? AND (userId = ? OR sellerId = ?)',
             [roomId, userId, userId]
         );
 
@@ -134,7 +134,7 @@ const sendMessage = async (req, res) => {
 
         // Validasi user adalah member room
         const [room] = await db.query(
-            'SELECT * FROM chat_rooms WHERE id = ? AND (buyerId = ? OR sellerId = ?)',
+            'SELECT * FROM chat_rooms WHERE id = ? AND (userId = ? OR sellerId = ?)',
             [roomId, senderId, senderId]
         );
 

@@ -24,11 +24,6 @@ const handleWebhook = async (req, res) => {
         }
         const payment = paymentRows[0];
 
-        const [orderRows] = await pool.query('SELECT * FROM orders WHERE id = ?', [payment.orderId]);
-        if (orderRows.length === 0) {
-            return res.status(200).json({ message: 'Order tidak ditemukan, diabaikan' });
-        }
-
         // Kalau sudah paid, jangan diproses ulang
         if (payment.status === 'paid') {
             return res.status(200).json({ message: 'Payment sudah diproses sebelumnya' });
@@ -52,16 +47,38 @@ const handleWebhook = async (req, res) => {
             return res.status(200).json({ message: 'Status tidak memerlukan update' });
         }
 
-        await pool.query('UPDATE payments SET status = ? WHERE id = ?', [paymentStatus, payment.id]);
-        await pool.query('UPDATE orders SET status = ? WHERE id = ?', [orderStatus, payment.orderId]);
+        // FIX: ambil semua orderId dari tabel pivot payment_orders (bukan payment.orderId)
+        const [paymentOrderRows] = await pool.query(
+            'SELECT orderId FROM payment_orders WHERE paymentId = ?', [payment.id]
+        );
+        if (paymentOrderRows.length === 0) {
+            return res.status(200).json({ message: 'Tidak ada order terkait, diabaikan' });
+        }
 
-        // Kembalikan stok kalau cancelled/expired
+        const orderIds = paymentOrderRows.map(r => r.orderId);
+        const placeholders = orderIds.map(() => '?').join(',');
+
+        // Update status payment
+        await pool.query('UPDATE payments SET status = ? WHERE id = ?', [paymentStatus, payment.id]);
+
+        // Update semua order terkait
+        await pool.query(
+            `UPDATE orders SET status = ? WHERE id IN (${placeholders})`,
+            [orderStatus, ...orderIds]
+        );
+
+        // FIX: kembalikan stok semua order kalau cancelled/expired (loop karena barang bekas)
         if (['cancelled', 'expired'].includes(paymentStatus)) {
-            const order = orderRows[0];
-            await pool.query(
-                'UPDATE product_sizes SET stock = stock + ? WHERE productId = ? AND size = ?',
-                [order.quantity, order.productId, order.size]
+            const [orderRows] = await pool.query(
+                `SELECT * FROM orders WHERE id IN (${placeholders})`,
+                orderIds
             );
+            for (const order of orderRows) {
+                await pool.query(
+                    'UPDATE product_sizes SET stock = stock + 1 WHERE productId = ? AND size = ?',
+                    [order.productId, order.size]
+                );
+            }
         }
 
         return res.status(200).json({ message: 'Webhook berhasil diproses' });
@@ -73,6 +90,7 @@ const handleWebhook = async (req, res) => {
 };
 
 // ========================= RIWAYAT PEMBAYARAN (USER) =========================
+// FIX: WHERE userId (bukan WHERE userId yang salah kolom)
 const getPayments = async (req, res) => {
     try {
         const [payments] = await pool.query(
@@ -108,6 +126,7 @@ const getAllPayments = async (req, res) => {
 };
 
 // ========================= DETAIL PEMBAYARAN =========================
+// FIX: WHERE userId (bukan WHERE userId yang salah kolom)
 const getPaymentById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -136,6 +155,7 @@ const getPaymentById = async (req, res) => {
 };
 
 // ========================= CANCEL PAYMENT =========================
+// FIX: pakai payment_orders untuk dapat semua orderId, bukan payment.orderId
 const cancelPayment = async (req, res) => {
     try {
         const { paymentId } = req.params;
@@ -154,18 +174,34 @@ const cancelPayment = async (req, res) => {
             return res.status(400).json({ message: `Pembayaran sudah ${payment.status}` });
         }
 
-        const [orderRows] = await pool.query('SELECT * FROM orders WHERE id = ?', [payment.orderId]);
-        const order = orderRows[0];
+        // FIX: ambil semua orderId dari tabel pivot payment_orders
+        const [paymentOrderRows] = await pool.query(
+            'SELECT orderId FROM payment_orders WHERE paymentId = ?', [paymentId]
+        );
+        const orderIds = paymentOrderRows.map(r => r.orderId);
+        const placeholders = orderIds.map(() => '?').join(',');
 
+        // Update status payment
         await pool.query('UPDATE payments SET status = ? WHERE id = ?', ['cancelled', paymentId]);
-        await pool.query('UPDATE orders SET status = ? WHERE id = ?', ['cancelled', payment.orderId]);
 
-        // Kembalikan stok
-        if (order) {
+        if (orderIds.length > 0) {
+            // Update semua order terkait
             await pool.query(
-                'UPDATE product_sizes SET stock = stock + ? WHERE productId = ? AND size = ?',
-                [order.quantity, order.productId, order.size]
+                `UPDATE orders SET status = 'cancelled' WHERE id IN (${placeholders})`,
+                orderIds
             );
+
+            // FIX: kembalikan stok semua order (barang bekas, stock +1 per order)
+            const [orderRows] = await pool.query(
+                `SELECT * FROM orders WHERE id IN (${placeholders})`,
+                orderIds
+            );
+            for (const order of orderRows) {
+                await pool.query(
+                    'UPDATE product_sizes SET stock = stock + 1 WHERE productId = ? AND size = ?',
+                    [order.productId, order.size]
+                );
+            }
         }
 
         const [updated] = await pool.query('SELECT * FROM payments WHERE id = ?', [paymentId]);
