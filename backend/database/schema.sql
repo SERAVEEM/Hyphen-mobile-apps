@@ -87,8 +87,6 @@ CREATE TABLE
 
 -- ============================================================
 -- 6. PRODUCTS
--- FIX 1: kolom "condition" → "item_condition" (sesuai controller)
--- FIX 2: item_condition NOT NULL tanpa default (wajib diisi seller)
 -- ============================================================
 CREATE TABLE
     products (
@@ -116,7 +114,6 @@ CREATE TABLE
 
 -- ============================================================
 -- 7. PRODUCT SIZES (relasi 1-N ke products)
--- FIX 3: stock DEFAULT 1 (barang bekas, stok max 1 per size)
 -- ============================================================
 CREATE TABLE
     product_sizes (
@@ -189,10 +186,6 @@ CREATE TABLE
 
 -- ============================================================
 -- 11. ORDERS
--- kolom userId: buyer yang melakukan order
--- kolom price: harga satuan produk (quantity selalu 1, barang bekas)
--- kolom quantity: dihapus — barang bekas selalu 1
--- kolom addressId: wajib diisi saat checkout, di-UPDATE oleh checkout controller
 -- ============================================================
 CREATE TABLE
     orders (

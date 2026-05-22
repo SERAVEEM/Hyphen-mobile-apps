@@ -11,7 +11,7 @@ const getOrderDetail = async (orderId) => {
             o.orderDate,
             o.updatedAt,
 
-            u.id              AS buyerId,
+            u.id              AS userId,
             u.username,
             u.email,
 
@@ -26,7 +26,7 @@ const getOrderDetail = async (orderId) => {
             p.defects         AS productDefects,
             p.originCityLabel AS productOriginCity
         FROM orders o
-        JOIN users u    ON o.buyerID   = u.id
+        JOIN users u    ON o.userId   = u.id
         JOIN products p ON o.productId = p.id
         WHERE o.id = ?
     `, [orderId]);

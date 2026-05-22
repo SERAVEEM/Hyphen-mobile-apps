@@ -6,7 +6,7 @@ const { getOrderDetail } = require('@/helpers/order.helpers');
 const createOrder = async (req, res) => {
     try {
         const { productId } = req.body;
-        const buyerID = req.user.id;
+        const userId = req.user.id;
 
         if (!productId) {
             return res.status(400).json({ message: 'productId wajib diisi' });
@@ -20,7 +20,7 @@ const createOrder = async (req, res) => {
             return res.status(404).json({ message: 'Product tidak ditemukan' });
         }
 
-        if (product[0].sellerID === buyerID) {
+        if (product[0].sellerID === userId) {
             return res.status(403).json({ message: 'Tidak bisa membeli produk sendiri' });
         }
 
@@ -42,7 +42,7 @@ const createOrder = async (req, res) => {
         const orderId = uuidv4();
         await pool.query(
             'INSERT INTO orders (id, buyerID, productId, size, price, status) VALUES (?, ?, ?, ?, ?, "pending")',
-            [orderId, buyerID, productId, size, product[0].price]
+            [orderId, userId, productId, size, product[0].price]
         );
 
         return res.status(201).json({
@@ -64,9 +64,9 @@ const createOrder = async (req, res) => {
 // ================== CREATE ORDER DARI CART ==================
 const createOrderFromCart = async (req, res) => {
     try {
-        const buyerID = req.user.id;
+        const userId = req.user.id;
 
-        const [cart] = await pool.query('SELECT * FROM cart_items WHERE userId = ?', [buyerID]);
+        const [cart] = await pool.query('SELECT * FROM cart_items WHERE userId = ?', [userId]);
         if (cart.length === 0) {
             return res.status(400).json({ message: 'Cart kosong' });
         }
@@ -86,7 +86,7 @@ const createOrderFromCart = async (req, res) => {
             }
 
             // FIX 2: cek seller tidak bisa beli produk sendiri lewat cart
-            if (product[0].sellerID === buyerID) {
+            if (product[0].sellerID === userId) {
                 errors.push(`Tidak bisa membeli produk sendiri: ${product[0].name}`);
                 continue;
             }
@@ -104,8 +104,8 @@ const createOrderFromCart = async (req, res) => {
 
             // FIX 3: hapus duplikat value 'pending' — 6 kolom harus 6 value
             await pool.query(
-                'INSERT INTO orders (id, buyerID, productId, size, price, status) VALUES (?, ?, ?, ?, ?, "pending")',
-                [orderId, buyerID, item.productId, item.size.toUpperCase(), product[0].price]
+                'INSERT INTO orders (id, userId, productId, size, price, status) VALUES (?, ?, ?, ?, ?, "pending")',
+                [orderId, userId, item.productId, item.size.toUpperCase(), product[0].price]
             );
 
             await pool.query(
@@ -119,7 +119,7 @@ const createOrderFromCart = async (req, res) => {
 
         // FIX 4: hanya hapus cart jika minimal 1 order berhasil dibuat
         if (newOrders.length > 0) {
-            await pool.query('DELETE FROM cart_items WHERE userId = ?', [buyerID]);
+            await pool.query('DELETE FROM cart_items WHERE userId = ?', [userId]);
         }
 
         // FIX 5: kembalikan 400 jika tidak ada satu pun order berhasil
@@ -165,12 +165,12 @@ const getOrderById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // FIX 6: kolom buyerID, bukan userId
-        const [order] = await pool.query('SELECT buyerID FROM orders WHERE id = ?', [id]);
+        // FIX 6: kolom userId, bukan buyerID
+        const [order] = await pool.query('SELECT userId FROM orders WHERE id = ?', [id]);
         if (order.length === 0) {
             return res.status(404).json({ message: 'Order tidak ditemukan' });
         }
-        if (order[0].buyerID !== req.user.id && req.user.role !== 'admin') {
+        if (order[0].userId !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Akses tidak diizinkan' });
         }
 
@@ -189,11 +189,11 @@ const getOrderById = async (req, res) => {
 // ========================= MY ORDERS =========================
 const getMyOrders = async (req, res) => {
     try {
-        const buyerID = req.user.id;
+        const userId = req.user.id;
 
         const [orders] = await pool.query(
-            'SELECT id FROM orders WHERE buyerID = ? ORDER BY orderDate DESC',
-            [buyerID]
+            'SELECT id FROM orders WHERE userId = ? ORDER BY orderDate DESC',
+            [userId]
         );
 
         if (orders.length === 0) {
@@ -217,14 +217,13 @@ const getMyOrders = async (req, res) => {
 const cancelOrder = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const buyerID = req.user.id;
+        const userId = req.user.id;
 
-        // FIX 8: kolom buyerID, bukan userId
         const [order] = await pool.query('SELECT * FROM orders WHERE id = ?', [orderId]);
         if (order.length === 0) {
             return res.status(404).json({ message: 'Order tidak ditemukan' });
         }
-        if (order[0].buyerID !== buyerID) {
+        if (order[0].userId !== userId) {
             return res.status(403).json({ message: 'Akses tidak diizinkan' });
         }
         if (order[0].status !== 'pending') {
