@@ -1,0 +1,3099 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "HYPEN API",
+    "description": "REST API aplikasi jual beli baju bekas dengan fitur auth, product, order, cart, address, payment (Midtrans), shipping (RajaOngkir Komerce), dan chat real-time (Socket.io).",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token JWT dari endpoint /auth/login. Berlaku 15 menit."
+      }
+    },
+    "schemas": {
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ]
+          },
+          "isVerified": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProductSize": {
+        "type": "object",
+        "required": [
+          "size",
+          "stock"
+        ],
+        "properties": {
+          "size": {
+            "type": "string",
+            "enum": [
+              "S",
+              "M",
+              "L",
+              "XL",
+              "XXL"
+            ]
+          },
+          "stock": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 10
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sellerID": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "category": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "integer",
+            "description": "Berat dalam gram"
+          },
+          "originCityId": {
+            "type": "string"
+          },
+          "originCityLabel": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductSize"
+            }
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "string"
+          },
+          "totalPrice": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "shipped",
+              "waiting_payment",
+              "paid",
+              "cancelled",
+              "delivered"
+            ]
+          },
+          "orderDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "example": "Rumah"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "destinationCityId": {
+            "type": "string"
+          },
+          "destinationCityLabel": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CartItem": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "string"
+          }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "paymentMethod": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "paid",
+              "cancelled",
+              "expired",
+              "refunded"
+            ]
+          },
+          "snapToken": {
+            "type": "string"
+          },
+          "snapUrl": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Shipment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "addressId": {
+            "type": "string"
+          },
+          "originCityId": {
+            "type": "string"
+          },
+          "originCityLabel": {
+            "type": "string"
+          },
+          "destinationCityId": {
+            "type": "string"
+          },
+          "destinationCityLabel": {
+            "type": "string"
+          },
+          "courierCode": {
+            "type": "string"
+          },
+          "courierName": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "weightGram": {
+            "type": "integer"
+          },
+          "shippingCost": {
+            "type": "number"
+          },
+          "etd": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PICKED_UP",
+              "IN_TRANSIT",
+              "DELIVERED",
+              "CANCELLED"
+            ]
+          },
+          "statusHistory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ChatRoom": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "buyerId": {
+            "type": "string"
+          },
+          "sellerId": {
+            "type": "string"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "lastMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "unreadCount": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roomId": {
+            "type": "string"
+          },
+          "senderId": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image"
+            ]
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Registrasi, login, verifikasi email, dan manajemen token"
+    },
+    {
+      "name": "User",
+      "description": "Profil dan manajemen akun user"
+    },
+    {
+      "name": "Wishlist",
+      "description": "Manajemen wishlist produk"
+    },
+    {
+      "name": "Product",
+      "description": "CRUD produk baju bekas"
+    },
+    {
+      "name": "Cart",
+      "description": "Keranjang belanja"
+    },
+    {
+      "name": "Order",
+      "description": "Pembuatan dan manajemen order"
+    },
+    {
+      "name": "Address",
+      "description": "Manajemen alamat pengiriman"
+    },
+    {
+      "name": "Shipping",
+      "description": "Kalkulasi ongkir dan manajemen pengiriman via RajaOngkir Komerce"
+    },
+    {
+      "name": "Payment",
+      "description": "Pembayaran via Midtrans Snap"
+    },
+    {
+      "name": "Chat",
+      "description": "Chat real-time antara buyer dan seller"
+    },
+    {
+      "name": "Checkout",
+      "description": "Proses checkout dari keranjang belanja"
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register akun baru",
+        "description": "OTP verifikasi akan dicetak di console server.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "johndoe"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "john@email.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "secret123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Register berhasil, OTP dikirim ke email"
+          },
+          "400": {
+            "description": "Validasi gagal atau email sudah terdaftar"
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Verifikasi email dengan OTP yang dikirim ke email saat register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "john@email.com"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email berhasil diverifikasi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "isNewUser": {
+                      "type": "boolean",
+                      "description": "true = belum punya profil, redirect ke halaman isi profil"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OTP salah atau expired"
+          }
+        }
+      }
+    },
+    "/auth/resend-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Kirim ulang OTP verifikasi email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "john@email.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP berhasil dikirim ulang"
+          },
+          "400": {
+            "description": "Email tidak ditemukan atau sudah diverifikasi"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login dan dapatkan access + refresh token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "john@email.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "secret123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login berhasil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "refreshToken": {
+                      "type": "string"
+                    },
+                    "hasProfile": {
+                      "type": "boolean",
+                      "description": "false = belum punya profil, redirect ke halaman profil"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email/password salah atau belum diverifikasi"
+          }
+        }
+      }
+    },
+    "/auth/google-signin": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login dengan akun Google",
+        "description": "Kirim ID token dari Google Sign-In, jika email belum terdaftar maka akan otomatis register dan buat profil baru.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "idToken"
+                ],
+                "properties": {
+                  "idToken": {
+                    "type": "string",
+                    "description": "ID token yang didapat dari Google Sign-In di frontend"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login berhasil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "refreshToken": {
+                      "type": "string"
+                    },
+                    "isNewUser": {
+                      "type": "boolean",
+                      "description": "true = baru pertama kali login dengan Google, redirect ke halaman isi profil"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID token tidak valid"
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Request OTP untuk reset password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "john@email.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP berhasil dikirim"
+          },
+          "400": {
+            "description": "Email tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset password menggunakan OTP",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp",
+                  "newPassword"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "john@email.com"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "123456"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "newSecret123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password berhasil direset"
+          },
+          "400": {
+            "description": "OTP tidak valid atau expired"
+          }
+        }
+      }
+    },
+    "/auth/refresh-token": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Perbarui access token menggunakan refresh token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refreshToken"
+                ],
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Access token berhasil diperbarui",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "accessToken": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refresh token tidak valid atau expired"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout dan invalidate refresh token",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refreshToken"
+                ],
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logout berhasil"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/profile": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Ambil profil user yang sedang login",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profil berhasil diambil"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update": {
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update profil user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fullname": {
+                    "type": "string",
+                    "example": "John Doe"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "example": "081234567890"
+                  },
+                  "dateOfBirth": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "1995-08-17"
+                  },
+                  "location": {
+                    "type": "string",
+                    "example": "Bandung"
+                  },
+                  "username": {
+                    "type": "string",
+                    "example": "johndoe_new"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "newemail@email.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profil berhasil diupdate"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/change-password": {
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Ganti password user yang sedang login",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "oldPassword",
+                  "newPassword"
+                ],
+                "properties": {
+                  "oldPassword": {
+                    "type": "string",
+                    "example": "oldSecret"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "newSecret123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password berhasil diubah"
+          },
+          "400": {
+            "description": "Password lama salah"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/delete": {
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Hapus akun user yang sedang login",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Akun berhasil dihapus"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "description": "Password konfirmasi untuk hapus akun"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/create": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Buat produk baru dengan foto (admin/seller)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "description",
+                  "price",
+                  "category",
+                  "weight",
+                  "originCityId",
+                  "originCityLabel",
+                  "sizes",
+                  "item_condition"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Kemeja Flannel Bekas"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Kondisi 90%, bahan tebal"
+                  },
+                  "price": {
+                    "type": "string",
+                    "example": "85000"
+                  },
+                  "category": {
+                    "type": "string",
+                    "example": "kemeja"
+                  },
+                  "weight": {
+                    "type": "string",
+                    "example": "500",
+                    "description": "Berat dalam gram"
+                  },
+                  "originCityId": {
+                    "type": "string",
+                    "example": "17473"
+                  },
+                  "originCityLabel": {
+                    "type": "string",
+                    "example": "Grogol, Jakarta Barat"
+                  },
+                  "sizes": {
+                    "type": "string",
+                    "example": "M,L,XL",
+                    "description": "Ukuran yang tersedia, pisahkan dengan koma"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Foto produk (JPG/PNG/WEBP, max 2MB)"
+                  },
+                  "item_condition": {
+                    "type": "string",
+                    "enum": [
+                      "like_new",
+                      "good",
+                      "fair"
+                    ],
+                    "example": "good",
+                    "description": "Kondisi barang"
+                  },
+                  "defects": {
+                    "type": "string",
+                    "example": "Ada sedikit noda di bagian lengan",
+                    "description": "Keterangan cacat/kekurangan produk (opsional)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Produk berhasil dibuat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Product"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validasi gagal"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Tidak memiliki role seller atau admin"
+          }
+        }
+      }
+    },
+    "/cart/getcart": {
+      "get": {
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Ambil isi keranjang user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Keranjang berhasil diambil"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/cart/addcart": {
+      "post": {
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Tambah produk ke keranjang",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId"
+                ],
+                "properties": {
+                  "productId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Produk berhasil ditambahkan ke keranjang"
+          }
+        }
+      }
+    },
+    "/cart/removefromcart/{productId}": {
+      "delete": {
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Hapus item dari keranjang",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "S",
+                "M",
+                "L",
+                "XL",
+                "XXL"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item berhasil dihapus"
+          },
+          "404": {
+            "description": "Item tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/cart/clearcart": {
+      "delete": {
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Kosongkan semua isi keranjang",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Keranjang berhasil dikosongkan"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/order/create": {
+      "post": {
+        "tags": [
+          "Order"
+        ],
+        "summary": "Buat order produk",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId"
+                ],
+                "properties": {
+                  "productId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order berhasil dibuat"
+          },
+          "400": {
+            "description": "Stok tidak cukup atau ukuran tidak tersedia"
+          },
+          "404": {
+            "description": "Produk tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/order/my-orders": {
+      "get": {
+        "tags": [
+          "Order"
+        ],
+        "summary": "Ambil semua order milik user yang login",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order user berhasil diambil"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/shipping/cities": {
+      "get": {
+        "tags": [
+          "Shipping"
+        ],
+        "summary": "Cari kota/kecamatan untuk pengiriman",
+        "description": "Cari data kota dari RajaOngkir. Parameter search wajib diisi.",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Nama kota, contoh: jakarta selatan"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar kota berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "17473"
+                          },
+                          "label": {
+                            "type": "string",
+                            "example": "GROGOL, GROGOL PETAMBURAN, JAKARTA BARAT, DKI JAKARTA, 11450"
+                          },
+                          "province_name": {
+                            "type": "string"
+                          },
+                          "city_name": {
+                            "type": "string"
+                          },
+                          "district_name": {
+                            "type": "string"
+                          },
+                          "zip_code": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parameter search wajib diisi"
+          }
+        }
+      }
+    },
+    "/shipping/cost": {
+      "post": {
+        "tags": [
+          "Shipping"
+        ],
+        "summary": "Hitung ongkir ke semua kurir",
+        "description": "Hitung ongkir berdasarkan originCityId dan destinationCityId dari endpoint /shipping/cities.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "originCityId",
+                  "destinationCityId",
+                  "weightGram"
+                ],
+                "properties": {
+                  "originCityId": {
+                    "type": "string",
+                    "example": "17473"
+                  },
+                  "destinationCityId": {
+                    "type": "string",
+                    "example": "23456"
+                  },
+                  "weightGram": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "example": 500,
+                    "description": "Berat dalam gram"
+                  },
+                  "courier": {
+                    "type": "string",
+                    "example": "jne",
+                    "description": "Kode kurir (opsional). Jika kosong, semua kurir dihitung."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Kalkulasi ongkir berhasil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "weightGram": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "example": "Jalur Nugraha Ekakurir (JNE)"
+                          },
+                          "code": {
+                            "type": "string",
+                            "example": "jne"
+                          },
+                          "service": {
+                            "type": "string",
+                            "example": "REG"
+                          },
+                          "description": {
+                            "type": "string",
+                            "example": "Layanan Reguler"
+                          },
+                          "cost": {
+                            "type": "number",
+                            "example": 10000
+                          },
+                          "etd": {
+                            "type": "string",
+                            "example": "1 day"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field wajib tidak diisi"
+          }
+        }
+      }
+    },
+    "/shipping/my-shipments": {
+      "get": {
+        "tags": [
+          "Shipping"
+        ],
+        "summary": "Ambil semua pengiriman milik user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar pengiriman berhasil diambil"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/shipping/{shipmentId}/status": {
+      "patch": {
+        "tags": [
+          "Shipping"
+        ],
+        "summary": "Update status pengiriman (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "ID shipment"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "processing",
+                      "shipped",
+                      "delivered",
+                      "cancelled"
+                    ],
+                    "example": "shipped"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status berhasil diupdate"
+          },
+          "400": {
+            "description": "Status tidak valid"
+          },
+          "404": {
+            "description": "Shipment tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/payment/my-payments": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "Ambil riwayat pembayaran user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Riwayat pembayaran"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/payment/webhook": {
+      "post": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "Webhook Midtrans \u2014 dipanggil otomatis oleh Midtrans",
+        "description": "Endpoint ini dipanggil otomatis oleh Midtrans saat status pembayaran berubah. Tidak perlu dipanggil manual.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  },
+                  "transaction_status": {
+                    "type": "string"
+                  },
+                  "fraud_status": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook berhasil diproses"
+          }
+        }
+      }
+    },
+    "/payment/config": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "Ambil Midtrans client key untuk frontend",
+        "responses": {
+          "200": {
+            "description": "Config Midtrans",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clientKey": {
+                      "type": "string"
+                    },
+                    "isProduction": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Ambil Midtrans client key dan status production. Endpoint publik, tidak perlu token."
+      }
+    },
+    "/payment/all-payments": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "Ambil semua pembayaran (admin only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Semua pembayaran"
+          },
+          "403": {
+            "description": "Forbidden - bukan admin"
+          }
+        }
+      }
+    },
+    "/chat/room": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Buat atau ambil room chat buyer-seller per produk",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "sellerId",
+                  "productId"
+                ],
+                "properties": {
+                  "sellerId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "productId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Room chat ditemukan (sudah ada)"
+          },
+          "201": {
+            "description": "Room chat baru berhasil dibuat"
+          },
+          "400": {
+            "description": "sellerId atau productId tidak diisi"
+          }
+        }
+      }
+    },
+    "/chat/rooms": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Ambil semua room chat milik user (inbox)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar room chat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ChatRoom"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat/{roomId}/messages": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Ambil semua pesan di room (history chat)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pesan berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ChatMessage"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akses tidak diizinkan"
+          }
+        }
+      }
+    },
+    "/chat/{roomId}/send": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Kirim pesan teks atau gambar (REST fallback)",
+        "description": "Untuk real-time gunakan Socket.io event `send_message`. Endpoint ini sebagai fallback.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "example": "Halo, apakah barang masih ada?"
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "description": "URL gambar dari endpoint /chat/upload"
+                  }
+                },
+                "description": "Minimal salah satu field (message atau imageUrl) harus diisi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pesan berhasil dikirim"
+          },
+          "400": {
+            "description": "Pesan atau gambar wajib diisi"
+          },
+          "403": {
+            "description": "Akses tidak diizinkan"
+          }
+        }
+      }
+    },
+    "/chat/upload": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Upload gambar untuk dikirim di chat",
+        "description": "Upload gambar ke Cloudinary, dapat imageUrl untuk dikirim via /chat/:roomId/send atau Socket.io.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "image"
+                ],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File gambar (JPG/PNG/WEBP, max 2MB)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Gambar berhasil diupload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "imageUrl": {
+                      "type": "string",
+                      "example": "https://res.cloudinary.com/xxx/image/upload/xxx.jpg"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "File gambar wajib diupload atau format tidak didukung"
+          }
+        }
+      }
+    },
+    "/checkout/checkout": {
+      "post": {
+        "tags": [
+          "Checkout"
+        ],
+        "summary": "Checkout keranjang belanja",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "addressId",
+                  "courierCode",
+                  "service"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "ID order yang akan dicheckout"
+                  },
+                  "addressId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "ID alamat tujuan"
+                  },
+                  "courierCode": {
+                    "type": "string",
+                    "example": "jne",
+                    "description": "Kode kurir (jne, sicepat, jnt, dll)"
+                  },
+                  "service": {
+                    "type": "string",
+                    "example": "REG",
+                    "description": "Layanan kurir (REG, YES, OKE, dll)"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "example": "Titip di depan pintu",
+                    "description": "Catatan pengiriman (opsional)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Checkout berhasil, kembalikan snapUrl dan snapToken untuk pembayaran Midtrans"
+          },
+          "400": {
+            "description": "Validasi gagal, kurir tidak didukung, atau order sudah punya shipment/payment"
+          },
+          "404": {
+            "description": "Order / produk / alamat tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/shipping/shipments": {
+      "get": {
+        "tags": [
+          "Shipping"
+        ],
+        "summary": "Ambil semua pengiriman (admin only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Semua pengiriman berhasil diambil"
+          },
+          "403": {
+            "description": "Forbidden - bukan admin"
+          }
+        }
+      }
+    },
+    "/address/add": {
+      "post": {
+        "tags": [
+          "Address"
+        ],
+        "summary": "Tambah alamat baru",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "label",
+                  "recipientName",
+                  "phone",
+                  "address",
+                  "postalCode",
+                  "destinationCityId"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "example": "Rumah"
+                  },
+                  "recipientName": {
+                    "type": "string",
+                    "example": "John Doe"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "example": "081234567890"
+                  },
+                  "address": {
+                    "type": "string",
+                    "example": "Jl. Sudirman No. 1"
+                  },
+                  "postalCode": {
+                    "type": "string",
+                    "example": "12345"
+                  },
+                  "destinationCityId": {
+                    "type": "string",
+                    "example": "17473"
+                  },
+                  "destinationCityLabel": {
+                    "type": "string",
+                    "example": "Grogol, Jakarta Barat"
+                  },
+                  "isDefault": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Alamat berhasil ditambahkan"
+          },
+          "400": {
+            "description": "Validasi gagal"
+          }
+        }
+      }
+    },
+    "/address/addresses": {
+      "get": {
+        "tags": [
+          "Address"
+        ],
+        "summary": "Ambil semua alamat milik user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar alamat"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/address/detail/{addressId}": {
+      "get": {
+        "tags": [
+          "Address"
+        ],
+        "summary": "Ambil detail alamat",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail alamat"
+          },
+          "404": {
+            "description": "Alamat tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/address/delete/{addressId}": {
+      "delete": {
+        "tags": [
+          "Address"
+        ],
+        "summary": "Hapus alamat",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alamat berhasil dihapus"
+          },
+          "404": {
+            "description": "Alamat tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/address/update/{addressId}": {
+      "put": {
+        "tags": [
+          "Address"
+        ],
+        "summary": "Update alamat",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "recipientName": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "postalCode": {
+                    "type": "string"
+                  },
+                  "destinationCityId": {
+                    "type": "string"
+                  },
+                  "destinationCityLabel": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Alamat berhasil diupdate"
+          },
+          "404": {
+            "description": "Alamat tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/address/setDefault/{addressId}": {
+      "put": {
+        "tags": [
+          "Address"
+        ],
+        "summary": "Set alamat sebagai default",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alamat berhasil diset sebagai default"
+          },
+          "404": {
+            "description": "Alamat tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/order/create/from-cart": {
+      "post": {
+        "tags": [
+          "Order"
+        ],
+        "summary": "Buat order dari keranjang belanja (belum selesai)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Order berhasil dibuat dari cart"
+          },
+          "400": {
+            "description": "Cart kosong atau stok habis"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "description": "Buat order dari semua item di cart. Tidak membutuhkan request body."
+      }
+    },
+    "/order/orders": {
+      "get": {
+        "tags": [
+          "Order"
+        ],
+        "summary": "Ambil semua order (admin only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Semua order berhasil diambil"
+          },
+          "403": {
+            "description": "Forbidden - bukan admin"
+          }
+        }
+      }
+    },
+    "/product/update/{productId}": {
+      "put": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Update produk (seller/admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "sizes": {
+                    "type": "string",
+                    "example": "M,L,XL"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "weight": {
+                    "type": "number"
+                  },
+                  "originCityId": {
+                    "type": "string"
+                  },
+                  "originCityLabel": {
+                    "type": "string"
+                  },
+                  "item_condition": {
+                    "type": "string",
+                    "enum": [
+                      "like_new",
+                      "good",
+                      "fair"
+                    ]
+                  },
+                  "defects": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Produk berhasil diupdate"
+          },
+          "403": {
+            "description": "Bukan pemilik produk"
+          },
+          "404": {
+            "description": "Produk tidak ditemukan"
+          }
+        },
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/product/delete/{productId}": {
+      "delete": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Hapus produk (seller/admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Produk berhasil dihapus"
+          },
+          "404": {
+            "description": "Produk tidak ditemukan"
+          }
+        },
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/product/products": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Ambil semua produk dengan filter opsional (public)",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by nama produk"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by kategori"
+          },
+          {
+            "name": "sizes",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by ukuran, contoh: M"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar produk",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Product"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/{productId}": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Ambil detail produk by ID (public)",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail produk"
+          },
+          "404": {
+            "description": "Produk tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/wishlist/getwishlist": {
+      "get": {
+        "tags": [
+          "Wishlist"
+        ],
+        "summary": "Ambil wishlist user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wishlist berhasil diambil"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wishlist/add": {
+      "post": {
+        "tags": [
+          "Wishlist"
+        ],
+        "summary": "Tambah produk ke wishlist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId"
+                ],
+                "properties": {
+                  "productId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Produk berhasil ditambahkan ke wishlist"
+          },
+          "400": {
+            "description": "Produk sudah ada di wishlist"
+          },
+          "404": {
+            "description": "Produk tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/wishlist/remove/{productId}": {
+      "delete": {
+        "tags": [
+          "Wishlist"
+        ],
+        "summary": "Hapus produk dari wishlist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "prod-uuid-123"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Produk berhasil dihapus dari wishlist"
+          },
+          "404": {
+            "description": "Produk tidak ditemukan di wishlist"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/payment/payments/{paymentId}": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "Ambil detail pembayaran by ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail pembayaran"
+          },
+          "404": {
+            "description": "Pembayaran tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/payment/cancel/{paymentId}": {
+      "post": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "Batalkan pembayaran",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pembayaran berhasil dibatalkan"
+          },
+          "400": {
+            "description": "Pembayaran sudah cancelled/paid"
+          },
+          "404": {
+            "description": "Pembayaran tidak ditemukan"
+          }
+        },
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/order/orders/{orderId}": {
+      "get": {
+        "tags": [
+          "Order"
+        ],
+        "summary": "Ambil detail order by ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail order"
+          },
+          "403": {
+            "description": "Bukan pemilik order"
+          },
+          "404": {
+            "description": "Order tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/order/cancel/{orderId}": {
+      "post": {
+        "tags": [
+          "Order"
+        ],
+        "summary": "Batalkan order (hanya jika status pending)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order berhasil dibatalkan"
+          },
+          "400": {
+            "description": "Order tidak bisa dibatalkan"
+          },
+          "404": {
+            "description": "Order tidak ditemukan"
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/user/create": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Create user profile",
+        "description": "Create profile for the authenticated user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fullname"
+                ],
+                "properties": {
+                  "fullname": {
+                    "type": "string",
+                    "example": "John Doe"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "example": "081234567890"
+                  },
+                  "dateOfBirth": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "1995-08-17"
+                  },
+                  "location": {
+                    "type": "string",
+                    "example": "Jakarta"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Profil berhasil dibuat"
+          },
+          "400": {
+            "description": "fullname wajib diisi atau profil sudah ada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/profile/photo": {
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update profile photo",
+        "description": "Upload and update the authenticated user's profile photo",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "photo"
+                ],
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Profile photo file (jpg/png)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Photo updated successfully"
+          },
+          "400": {
+            "description": "No file uploaded"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Profile not found"
+          }
+        }
+      }
+    },
+    "/product/pending": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get pending products (Admin only)",
+        "description": "Retrieve all products with pending/waiting approval status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of pending products retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin only"
+          }
+        }
+      }
+    },
+    "/product/{productId}/approve": {
+      "put": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Approve a product (Admin only)",
+        "description": "Admin approves a pending product listing",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Product ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product approved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin only"
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        }
+      }
+    },
+    "/product/{productId}/reject": {
+      "put": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Reject a product (Admin only)",
+        "description": "Admin rejects a pending product listing",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Product ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "example": "Product image does not meet quality standards"
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product rejected successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin only"
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <h3>🛡️ Admin</h3>
+  <div id="log" style="border:1px solid #ccc; height:200px; overflow:auto; padding:10px"></div>
+  <input id="msg" placeholder="Balas pesan..." />
+  <input type="file" id="imgFile" accept="image/*" />
+  <button onclick="kirim()">Balas</button>
+
+  <script>
+    const socket = io('http://localhost:3000');
+    const roomId = 'a191a299-cf4d-4160-9030-8f5cb167a1dc';
+    const senderId = '3c7bdbc7-8f55-41e4-a6e0-69c18625225d';
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjNjN2JkYmM3LThmNTUtNDFlNC1hNmUwLTY5YzE4NjI1MjI1ZCIsInVzZXJuYW1lIjoiZmluZXN0am9lMjEiLCJlbWFpbCI6ImZpbmVqb2U5OTlAZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzkzODMyNTcsImV4cCI6MTc3OTM4NDE1N30.43ZXbqshdZsDey4b3KfrDWeYnb8vuTFoOoJZpmiX-2E';
+    socket.on('connect', () => {
+      log('✅ Admin connected: ' + socket.id);
+      socket.emit('join_room', roomId);
+
+      log('🖼️ Test image: <img src="https://via.placeholder.com/100" style="max-width:100px">');
+    });
+
+    socket.on('new_message', (data) => {
+    if (data.imageUrl) {
+        log('📨 ' + data.senderName + ': <img src="' + data.imageUrl + '" style="max-width:200px;max-height:200px;display:block">');
+    } else {
+        log('📨 ' + data.senderName + ': ' + data.message);
+    }
+});
+
+    socket.on('user_typing', (data) => {
+      log('✏️ ' + data.username + ' sedang mengetik...');
+    });
+
+    socket.on('error', (data) => {
+      log('❌ Error: ' + data.message);
+    });
+
+    socket.on('connect_error', (err) => {
+      log('❌ Connect error: ' + err.message);
+    });
+
+    async function kirim() {
+      const msg = document.getElementById('msg').value;
+      const file = document.getElementById('imgFile').files[0];
+
+      if (!msg && !file) return;
+
+      if (file) {
+        log('⏳ Mengupload gambar...');
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const res = await fetch('http://localhost:3000/api/v1/chat/upload', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          log('❌ Upload gagal: ' + data.message);
+          return;
+        }
+
+        socket.emit('send_message', {
+          roomId, senderId,
+          message: null,
+          imageUrl: data.imageUrl
+        });
+
+        document.getElementById('imgFile').value = '';
+      }
+
+      if (msg) {
+        socket.emit('send_message', {
+          roomId, senderId,
+          message: msg,
+          imageUrl: null
+        });
+        log('📤 Socket emit send_message dengan imageUrl');
+        document.getElementById('msg').value = '';
+      }
+    }
+
+    function log(msg) {
+    const div = document.getElementById('log');
+    const p = document.createElement('p');
+    p.style.margin = '4px 0';
+    p.innerHTML = msg;
+    div.appendChild(p);
+    div.scrollTop = div.scrollHeight;
+}
+  </script>
+</body>
+</html>
