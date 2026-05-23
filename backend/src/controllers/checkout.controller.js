@@ -125,7 +125,6 @@ const checkout = async (req, res) => {
         const serviceUpper = service.toUpperCase();
 
         for (const [originCityId, groupOrders] of Object.entries(originGroups)) {
-            // FIX: barang bekas quantity selalu 1, tidak ada kolom quantity di orders
             const totalWeight = Math.max(
                 groupOrders.reduce((sum, o) => sum + o.weight, 0),
                 1000
@@ -165,7 +164,6 @@ const checkout = async (req, res) => {
         const grandTotal = totalProductPrice + totalShippingCost;
 
         // ===== BUAT SHIPMENT PER ORDER =====
-        // FIX: kolom userId (bukan userId yang lama / buyerID)
         const createdShipments = [];
         for (const group of shipmentDetails) {
             for (const order of group.orders) {
@@ -190,8 +188,6 @@ const checkout = async (req, res) => {
         const user = userRows[0];
 
         const midtransOrderId = `PAY-${Date.now()}`;
-
-        // FIX: gunakan o.price & o.productName, quantity selalu 1 (barang bekas)
         const item_details = [
             ...orderRows.map(o => ({
                 id: o.productId,
@@ -228,7 +224,6 @@ const checkout = async (req, res) => {
         const midtransResponse = await snap.createTransaction(midtransParam);
 
         // ===== SIMPAN PAYMENT =====
-        // FIX: kolom userId (bukan buyerID)
         const paymentId = uuidv4();
         const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 

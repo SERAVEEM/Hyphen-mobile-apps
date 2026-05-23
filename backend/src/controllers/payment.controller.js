@@ -19,7 +19,6 @@ const handleWebhook = async (req, res) => {
             'SELECT * FROM payments WHERE midtransOrderId = ?', [order_id]
         );
         if (paymentRows.length === 0) {
-            // Tetap return 200 supaya Midtrans tidak retry terus
             return res.status(200).json({ message: 'Payment tidak ditemukan, diabaikan' });
         }
         const payment = paymentRows[0];
@@ -47,7 +46,6 @@ const handleWebhook = async (req, res) => {
             return res.status(200).json({ message: 'Status tidak memerlukan update' });
         }
 
-        // FIX: ambil semua orderId dari tabel pivot payment_orders (bukan payment.orderId)
         const [paymentOrderRows] = await pool.query(
             'SELECT orderId FROM payment_orders WHERE paymentId = ?', [payment.id]
         );
@@ -90,7 +88,6 @@ const handleWebhook = async (req, res) => {
 };
 
 // ========================= RIWAYAT PEMBAYARAN (USER) =========================
-// FIX: WHERE userId (bukan WHERE userId yang salah kolom)
 const getPayments = async (req, res) => {
     try {
         const [payments] = await pool.query(
@@ -126,7 +123,6 @@ const getAllPayments = async (req, res) => {
 };
 
 // ========================= DETAIL PEMBAYARAN =========================
-// FIX: WHERE userId (bukan WHERE userId yang salah kolom)
 const getPaymentById = async (req, res) => {
     try {
         const { id } = req.params;

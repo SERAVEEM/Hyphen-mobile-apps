@@ -7,7 +7,7 @@ const cloudinary = require('@/config/cloudinary');
 // ================== BUAT / AMBIL ROOM CHAT ==================
 const getOrCreateRoom = async (req, res) => {
     try {
-        const buyerId = req.user.id;
+        const userId = req.user.id;
         const { sellerId, productId } = req.body;
 
         if (!sellerId || !productId) {
@@ -16,8 +16,8 @@ const getOrCreateRoom = async (req, res) => {
 
         // Cek room sudah ada atau belum
         const [existing] = await db.query(
-            'SELECT * FROM chat_rooms WHERE buyerId = ? AND sellerId = ? AND productId = ?',
-            [buyerId, sellerId, productId]
+            'SELECT * FROM chat_rooms WHERE userId = ? AND sellerId = ? AND productId = ?',
+            [userId, sellerId, productId]
         );
 
         if (existing.length > 0) {
@@ -31,50 +31,16 @@ const getOrCreateRoom = async (req, res) => {
         const id = uuidv4();
         await db.query(
             'INSERT INTO chat_rooms (id, userId, sellerId, productId) VALUES (?, ?, ?, ?)',
-            [id, buyerId, sellerId, productId]
+            [id, userId, sellerId, productId]
         );
 
         return res.status(201).json({
             message: 'Room chat berhasil dibuat',
-            data: { id, buyerId, sellerId, productId }
+            data: { id, userId, sellerId, productId }
         });
     } catch (error) {
         return res.status(500).json({
             message: 'Gagal membuat room chat',
-            error: error.message
-        });
-    }
-};
-
-// ================== GET SEMUA ROOM MILIK USER ==================
-const getMyRooms = async (req, res) => {
-    try {
-        const userId = req.user.id;
-
-        const [rooms] = await db.query(
-            `SELECT cr.*, 
-                (SELECT cm.message FROM chat_messages cm 
-                 WHERE cm.roomId = cr.id 
-                 ORDER BY cm.createdAt DESC LIMIT 1) as lastMessage,
-                (SELECT cm.createdAt FROM chat_messages cm 
-                 WHERE cm.roomId = cr.id 
-                 ORDER BY cm.createdAt DESC LIMIT 1) as lastMessageAt,
-                (SELECT COUNT(*) FROM chat_messages cm 
-                 WHERE cm.roomId = cr.id AND cm.isRead = 0 AND cm.senderId != ?) as unreadCount
-             FROM chat_rooms cr
-             WHERE cr.userId = ? OR cr.sellerId = ?
-             ORDER BY lastMessageAt DESC`,
-            [userId, userId, userId]
-        );
-
-        return res.status(200).json({
-            message: 'Daftar room chat',
-            total: rooms.length,
-            data: rooms
-        });
-    } catch (error) {
-        return res.status(500).json({
-            message: 'Gagal mengambil room chat',
             error: error.message
         });
     }
@@ -201,4 +167,100 @@ const uploadChatImage = async (req, res) => {
     }
 };
 
-module.exports = { getOrCreateRoom, getMyRooms, getMessages, sendMessage, uploadChatImage };
+// ================== GET INBOX ==================
+// Menampilkan semua room chat milik user yang sudah ada pesannya,
+// diurutkan berdasarkan pesan terakhir (terbaru di atas).
+// Setiap item berisi: info lawan bicara, info produk, pesan terakhir, jumlah unread.
+const getInbox = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const [rooms] = await db.query(
+            `SELECT
+                cr.id                       AS roomId,
+                cr.productId,
+
+                -- Info produk
+                p.name                      AS productName,
+                p.imageUrl                  AS productImageUrl,
+                p.price                     AS productPrice,
+
+                -- Lawan bicara: kalau user adalah buyer → tampilkan seller, sebaliknya tampilkan buyer
+                CASE WHEN cr.userId = ? THEN cr.sellerId ELSE cr.userId END
+                                            AS otherUserId,
+                CASE WHEN cr.userId = ? THEN su.username ELSE bu.username END
+                                            AS otherUsername,
+                CASE WHEN cr.userId = ? THEN sp.photoUrl ELSE bp.photoUrl END
+                                            AS otherPhotoUrl,
+
+                -- Role kita dalam room ini
+                CASE WHEN cr.userId = ? THEN 'buyer' ELSE 'seller' END
+                                            AS myRole,
+
+                -- Pesan terakhir
+                lm.message                  AS lastMessage,
+                lm.imageUrl                 AS lastMessageImageUrl,
+                lm.type                     AS lastMessageType,
+                lm.senderId                 AS lastMessageSenderId,
+                lm.createdAt                AS lastMessageAt,
+
+                -- Jumlah pesan belum dibaca (yang dikirim lawan bicara)
+                COALESCE(unread.cnt, 0)     AS unreadCount
+
+            FROM chat_rooms cr
+
+            -- Join produk
+            JOIN products p ON p.id = cr.productId
+
+            -- Join user buyer
+            JOIN users bu ON bu.id = cr.userId
+            LEFT JOIN user_profiles bp ON bp.userId = bu.id
+
+            -- Join user seller
+            JOIN users su ON su.id = cr.sellerId
+            LEFT JOIN user_profiles sp ON sp.userId = su.id
+
+            -- Subquery: pesan terakhir di tiap room (MariaDB-compatible)
+            LEFT JOIN chat_messages lm
+                ON lm.id = (
+                    SELECT id FROM chat_messages
+                    WHERE roomId = cr.id
+                    ORDER BY createdAt DESC
+                    LIMIT 1
+                )
+
+            -- Subquery: hitung unread
+            LEFT JOIN (
+                SELECT roomId, COUNT(*) AS cnt
+                FROM chat_messages
+                WHERE senderId != ? AND isRead = 0
+                GROUP BY roomId
+            ) unread ON unread.roomId = cr.id
+
+            WHERE
+                (cr.userId = ? OR cr.sellerId = ?)
+                AND lm.createdAt IS NOT NULL   -- hanya room yang sudah ada pesannya
+
+            ORDER BY lm.createdAt DESC`,
+            [
+                userId, userId, userId, userId, // CASE WHEN x4
+                userId,                         // unread subquery: senderId != ?
+                userId, userId                  // WHERE: cr.userId = ? OR cr.sellerId = ?
+            ]
+        );
+
+        return res.status(200).json({
+            message: 'Inbox berhasil diambil',
+            total: rooms.length,
+            data: rooms
+        });
+    } catch (error) {
+        console.error('getInbox error:', error);
+        return res.status(500).json({
+            message: 'Gagal mengambil inbox',
+            error: error.message
+        });
+    }
+};
+
+module.exports = { getOrCreateRoom, getInbox, getMessages, sendMessage, uploadChatImage };

@@ -1,6 +1,5 @@
 const pool = require('@/config/db');
 const { rajaongkirGet, rajaongkirPost } = require('@/helpers/shipping.helpers');
-
 const SUPPORTED_COURIERS = ['jne', 'jnt', 'sicepat', 'anteraja', 'pos'];
 
 // ========================= CARI KOTA =========================
