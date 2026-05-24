@@ -9,6 +9,8 @@ import 'mock_products.dart';
 import 'SellPage.dart';
 import 'product_manager.dart';
 import 'AdminPage.dart';
+import 'UserDrawer.dart';
+import 'InboxPage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -52,12 +54,24 @@ class _HomePageState extends State<HomePage> {
     
     return Scaffold(
       backgroundColor: Colors.white,
+      drawer: UserDrawer(
+        currentTab: _selectedIndex,
+        onTabSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+      ),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.black),
-          onPressed: () {},
+        leading: Builder(
+          builder: (context) {
+            return IconButton(
+              icon: const Icon(Icons.menu, color: Colors.black),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            );
+          },
         ),
         title: GestureDetector(
           onTap: _onDeveloperTap,
@@ -169,6 +183,8 @@ class _HomePageState extends State<HomePage> {
             });
           },
         );
+      case 3:
+        return const InboxPage();
       case 4:
         return UserProfile(
           onJualPressed: () => setState(() => _selectedIndex = 2),
