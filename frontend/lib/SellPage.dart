@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'product_manager.dart';
 import 'mock_products.dart';
+import 'widgets/PhotoUploaderBox.dart';
+import 'widgets/SellingTipsBox.dart';
 
 class SellPage extends StatefulWidget {
   final VoidCallback? onUploadSuccess;
@@ -422,103 +424,15 @@ class _SellPageState extends State<SellPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Photo Uploader Box
-            Center(
-              child: GestureDetector(
-                onTap: _showPhotoPicker,
-                child: Container(
-                  height: 180,
-                  width: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: _selectedImagePath != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: Image.asset(
-                            _selectedImagePath!,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add, size: 28, color: Colors.grey.shade400),
-                            const SizedBox(height: 8),
-                            Text(
-                              '+ Tambah Foto',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
+            PhotoUploaderBox(
+              selectedImagePath: _selectedImagePath,
+              onTap: _showPhotoPicker,
             ),
             const SizedBox(height: 24),
 
-            // Tips Box
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-                border: Border.all(color: const Color(0xFFF3F3F3)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline, color: Colors.grey.shade500, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tips untuk foto',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Pastikan foto menampilkan baju secara utuh dengan latar yang bersih',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black45,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const SellingTipsBox(),
             const SizedBox(height: 24),
 
-            // Form container matching Figma card style
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -534,7 +448,6 @@ class _SellPageState extends State<SellPage> {
               ),
               child: Column(
                 children: [
-                  // Nama baju
                   _buildFormTextRow(
                     label: 'Nama baju',
                     hint: 'cth. Black Jeans',
@@ -542,7 +455,6 @@ class _SellPageState extends State<SellPage> {
                   ),
                   const Divider(height: 1, thickness: 1, color: Color(0xFFF5F5F5)),
 
-                  // Description
                   _buildFormTextRow(
                     label: 'Description',
                     hint: 'cth. Tidak ada kerusakan/noda, Ukuran M',
@@ -551,7 +463,6 @@ class _SellPageState extends State<SellPage> {
                   ),
                   const Divider(height: 1, thickness: 1, color: Color(0xFFF5F5F5)),
 
-                  // Kategori
                   _buildFormSelectorRow(
                     label: 'Kategori',
                     value: _selectedCategory,
@@ -559,7 +470,6 @@ class _SellPageState extends State<SellPage> {
                   ),
                   const Divider(height: 1, thickness: 1, color: Color(0xFFF5F5F5)),
 
-                  // Ukuran (Dynamic extension for data integrity)
                   _buildFormSelectorRow(
                     label: 'Ukuran',
                     value: _selectedSize,
@@ -567,7 +477,6 @@ class _SellPageState extends State<SellPage> {
                   ),
                   const Divider(height: 1, thickness: 1, color: Color(0xFFF5F5F5)),
 
-                  // Kondisi (Dynamic extension for data integrity)
                   _buildFormSelectorRow(
                     label: 'Kondisi',
                     value: _selectedCondition,
@@ -575,7 +484,6 @@ class _SellPageState extends State<SellPage> {
                   ),
                   const Divider(height: 1, thickness: 1, color: Color(0xFFF5F5F5)),
 
-                  // Harga
                   _buildFormSelectorRow(
                     label: 'Harga',
                     value: _enteredPrice != null
@@ -588,7 +496,6 @@ class _SellPageState extends State<SellPage> {
             ),
             const SizedBox(height: 40),
 
-            // Upload Button
             ElevatedButton(
               onPressed: _uploadProduct,
               style: ElevatedButton.styleFrom(

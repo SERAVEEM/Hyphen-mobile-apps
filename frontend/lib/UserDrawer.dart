@@ -27,7 +27,6 @@ class UserDrawer extends StatelessWidget {
             return Column(
               children: [
                 const SizedBox(height: 32),
-                // Drawer Header Logo
                 Text(
                   'HYPEN.',
                   style: GoogleFonts.plusJakartaSans(
@@ -48,7 +47,6 @@ class UserDrawer extends StatelessWidget {
                 ),
                 const SizedBox(height: 48),
 
-                // Menu Cards List
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -60,13 +58,11 @@ class UserDrawer extends StatelessWidget {
                       _buildDrawerCard(context, Icons.person_outline, 'Profile', 4),
                       const SizedBox(height: 40),
                       
-                      // Dynamic Auth Card
                       _buildAuthCard(context, auth),
                     ],
                   ),
                 ),
 
-                // Footer Info
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24.0),
                   child: Text(
@@ -91,7 +87,7 @@ class UserDrawer extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.pop(context); // Close drawer
+        Navigator.pop(context);
         onTabSelected(tabIndex);
       },
       child: Container(
@@ -125,10 +121,9 @@ class UserDrawer extends StatelessWidget {
     const Color brandBrown = Color(0xFF8C7355);
 
     if (auth.isLoggedIn) {
-      // Authenticated state -> Show red "Log Out" card
       return GestureDetector(
         onTap: () {
-          Navigator.pop(context); // Close drawer
+          Navigator.pop(context);
           auth.logout();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -163,10 +158,9 @@ class UserDrawer extends StatelessWidget {
         ),
       );
     } else {
-      // Unauthenticated state -> Show brandBrown "Log In" card
       return GestureDetector(
         onTap: () {
-          Navigator.pop(context); // Close drawer
+          Navigator.pop(context);
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const LoginPage()),

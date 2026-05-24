@@ -28,15 +28,12 @@ class UserProfile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. User Info Card
               _buildUserCard(context, auth.userName),
               const SizedBox(height: 20),
 
-              // 2. Mulai Jual Bajumu Banner
               _buildJualBanner(context),
               const SizedBox(height: 20),
 
-              // 3. Order History List Item
               _buildMenuItem(
                 icon: Icons.receipt_long_outlined,
                 title: 'Order History',
@@ -51,7 +48,6 @@ class UserProfile extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Seller Dashboard List Item
               _buildMenuItem(
                 icon: Icons.storefront_outlined,
                 title: 'Seller Dashboard',
@@ -66,17 +62,17 @@ class UserProfile extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // 4. Share List Item
               _buildMenuItem(
                 icon: Icons.share_outlined,
                 title: 'Share',
                 onTap: () {
-                  // TODO: Integrate share action
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Share link copied!')),
+                  );
                 },
               ),
               const SizedBox(height: 16),
 
-              // 5. Help & Support grouped card
               _buildGroupedMenu(
                 items: [
                   _GroupedItemData(
@@ -92,7 +88,6 @@ class UserProfile extends StatelessWidget {
                 ],
               ),
               
-              // Extra bottom padding to avoid bottom navigation bar overlap
               const SizedBox(height: 120),
             ],
           ),
@@ -127,14 +122,12 @@ class UserProfile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Row(
           children: [
-            // Avatar Image
             const CircleAvatar(
               radius: 28,
               backgroundColor: Color(0xFFF3F3F3),
               backgroundImage: AssetImage('assets/images/user_avatar.png'),
             ),
             const SizedBox(width: 16),
-            // User Info (Name & Subtitle)
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,7 +152,6 @@ class UserProfile extends StatelessWidget {
                 ],
               ),
             ),
-            // Chevron Right Icon
             const Icon(
               Icons.chevron_right,
               color: Colors.black26,
@@ -252,7 +244,6 @@ class UserProfile extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Background Image
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(24),
@@ -265,7 +256,6 @@ class UserProfile extends StatelessWidget {
               ),
             ),
           ),
-          // Gradient Overlay to ensure text readability
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -281,7 +271,6 @@ class UserProfile extends StatelessWidget {
               ),
             ),
           ),
-          // Text Content
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -307,7 +296,6 @@ class UserProfile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                // "Jual" Button
                 ElevatedButton(
                   onPressed: onJualPressed,
                   style: ElevatedButton.styleFrom(

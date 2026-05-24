@@ -49,12 +49,9 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
       body: ListenableBuilder(
         listenable: ProductManager(),
         builder: (context, child) {
-          // Get all products. For this seller dashboard demo, we show the products
-          // created by the user ("Alex Rivera") OR we show the seeded mock list to keep the UI beautiful
-          // (matching the Figma image which shows the Vintage green T-shirts and blue shirts).
+          // Fetch all products (includes user-created and seeded mock data).
           final allProducts = ProductManager().products;
           
-          // Let's filter by search query
           final filteredProducts = allProducts.where((product) {
             final titleMatch = product.title.toLowerCase().contains(_searchQuery.toLowerCase());
             final brandMatch = product.brand.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -64,7 +61,6 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Search Bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
                 child: Container(
@@ -95,12 +91,10 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
               ),
               const SizedBox(height: 16),
 
-              // Action Buttons Row (Manage Order & Add New Product)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Row(
                   children: [
-                    // Manage Order Button
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -144,7 +138,6 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // Add New Product Button
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -153,7 +146,7 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
                             MaterialPageRoute(
                               builder: (context) => SellPage(
                                 onUploadSuccess: () {
-                                  Navigator.pop(context); // Pop SellPage
+                                  Navigator.pop(context);
                                 },
                               ),
                             ),
@@ -196,7 +189,6 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
               ),
               const SizedBox(height: 32),
 
-              // "Your Product" title
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Text(
@@ -210,7 +202,6 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
               ),
               const SizedBox(height: 16),
 
-              // Products Grid
               Expanded(
                 child: filteredProducts.isEmpty
                     ? Center(
